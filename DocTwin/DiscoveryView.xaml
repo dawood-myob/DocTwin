@@ -1,0 +1,107 @@
+﻿<UserControl x:Class="DocTwin.DiscoveryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DocTwin.ViewModels">
+    <Grid Margin="18">
+        <Grid.RowDefinitions><RowDefinition Height="2*" /><RowDefinition Height="Auto" /><RowDefinition Height="3*" /></Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Discovery settings and coverage"><StackPanel Margin="0,0,8,6">
+<Expander Header="Scan settings - root, scope and Quick / Deep mode" IsExpanded="{Binding IsScanSettingsExpanded}" Foreground="{DynamicResource InkBrush}"><StackPanel IsEnabled="{Binding IsIdle}" Margin="0,6,8,0">
+            <TextBlock Text="Discover redundancy - no candidate URL needed" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" />
+            <TextBlock Text="Retrieve the root and accessible nested pages, then find similar content outside that tree, including other spaces. No AI is required to discover exact and lexical overlaps."
+                       Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,10" />
+            <WrapPanel Margin="0,0,0,8"><TextBlock Text="Scan mode: " VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding ScanModes}" SelectedItem="{Binding SelectedScanMode}" Width="120" AutomationProperties.Name="Discovery scan mode" /></WrapPanel><TextBlock Text="{Binding ScanModeDescription}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8" /><TextBlock Text="Root Confluence page URL" FontWeight="SemiBold" />
+            <TextBox Text="{Binding RootUrl, UpdateSourceTrigger=PropertyChanged}" Padding="8" Margin="0,6,0,10" AutomationProperties.Name="Discovery root page URL" MaxLength="2048" />
+            <CheckBox IsChecked="{Binding AllAccessibleSpaces}" Margin="0,0,0,8">
+                <TextBlock Text="I approve searching ALL accessible spaces on this site, not just the root's space." TextWrapping="Wrap" />
+            </CheckBox>
+            <TextBlock Text="Otherwise, approved external space keys separated by commas (e.g. MSS, PB). Ignored for all-accessible scope." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12" />
+            <TextBox Text="{Binding SearchSpaceKeys, UpdateSourceTrigger=PropertyChanged}" Padding="8" Margin="0,6,0,8" AutomationProperties.Name="External search space keys" />
+            <WrapPanel>
+                <TextBlock Text="Source node limit: " VerticalAlignment="Center" />
+                <TextBox Text="{Binding SourceLimit, UpdateSourceTrigger=PropertyChanged}" Width="65" Padding="6" AutomationProperties.Name="Source node limit" />
+                <TextBlock Text="  External page limit: " VerticalAlignment="Center" />
+                <TextBox Text="{Binding ExternalLimit, UpdateSourceTrigger=PropertyChanged}" Width="65" Padding="6" AutomationProperties.Name="External page limit" />
+                <TextBlock Text="  Lexical threshold (0.1-1): " VerticalAlignment="Center" />
+                <TextBox Text="{Binding LexicalThreshold, UpdateSourceTrigger=PropertyChanged}" Width="65" Padding="6" AutomationProperties.Name="Lexical match threshold" />
+            </WrapPanel>
+            <TextBlock Text="Scoped tokens additionally need read:hierarchical-content:confluence and read:content-details:confluence for title search; selected-space lookup also needs read:space:confluence. Only pages visible to your account can be scanned. Page limits and failures mean incomplete coverage."
+                       Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" />
+        </StackPanel></Expander>
+<TextBlock Text="{Binding ScanCoverage}" TextWrapping="Wrap" Foreground="{DynamicResource InkBrush}" AutomationProperties.Name="Discovery scan coverage" />
+<TextBlock Text="Lexical % measures exact 5-word overlap. Title/identifier + content-word matches flag potential functional overlap even when wording differs. Neither proves redundancy, factual completeness or authority."
+                   TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,0,8" />
+<Expander Header="Record a local human-review decision" Margin="0,8,0,0" Foreground="{DynamicResource InkBrush}"><StackPanel IsEnabled="{Binding IsIdle}" Margin="0,6,8,0">
+            <TextBlock Text="{Binding ReviewStatus}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="165" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox ItemsSource="{Binding ReviewDecisions}" SelectedItem="{Binding SelectedReviewDecision}" AutomationProperties.Name="Human review decision" Margin="0,0,8,0" />
+                <TextBox Grid.Column="1" Text="{Binding ReviewNotes, UpdateSourceTrigger=PropertyChanged}" MaxLength="4000" AutomationProperties.Name="Human review notes" ToolTip="Review notes: record ownership, approval evidence, intended audience and unresolved questions. Saved locally, not in Confluence." Margin="0,0,8,0" />
+                <Button Grid.Column="2" Content="Save local review" Command="{Binding SaveReviewCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+            </Grid>
+            <TextBlock Text="Candidate-only % is lexical difference, not proof of missing updates. Review decisions store only page IDs, versions, notes and timestamps locally. No Confluence edits, archives, additions or deletions are implemented."
+                       Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
+        </StackPanel></Expander>
+        </StackPanel></ScrollViewer>
+<WrapPanel Grid.Row="1" Margin="0,8,0,6">
+            <Button Content="Discover duplicates" Command="{Binding ScanCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0" />
+            <Button Content="Review selected finding" Command="{Binding ReviewFindingCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0" />
+            <Button Content="Prepare AI" Command="{Binding PrepareAiPairCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" /><Button Content="Export review report" Command="{Binding ExportReportCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+        </WrapPanel>
+<TabControl Grid.Row="2" MinHeight="210">
+            <TabItem Header="Candidate pairs">
+                <DataGrid ItemsSource="{Binding Findings}" SelectedItem="{Binding SelectedFinding, Mode=TwoWay}" SelectionMode="Single" SelectionUnit="FullRow" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" EnableRowVirtualization="True" AutomationProperties.Name="Discovered duplicate candidates">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Source page" SortMemberPath="SourceTitle" Width="210">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock TextWrapping="Wrap"><Hyperlink NavigateUri="{Binding Source.Url}" RequestNavigate="PageLink_RequestNavigate" Foreground="{DynamicResource TealHoverBrush}"><Run Text="{Binding SourceTitle, Mode=OneWay}" /></Hyperlink></TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Matching page" SortMemberPath="CandidateTitle" Width="210">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock TextWrapping="Wrap"><Hyperlink NavigateUri="{Binding Candidate.Url}" RequestNavigate="PageLink_RequestNavigate" Foreground="{DynamicResource TealHoverBrush}"><Run Text="{Binding CandidateTitle, Mode=OneWay}" /></Hyperlink></TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Space ID" Binding="{Binding CandidateSpace}" Width="85" />
+                        <DataGridTextColumn Header="Relationship" Binding="{Binding Relationship}" Width="160" />
+                        <DataGridTextColumn Header="Match basis" Binding="{Binding MatchBasis}" Width="220" /><DataGridTextColumn Header="Title overlap %" Binding="{Binding TitleCoverage}" Width="105" /><DataGridTextColumn Header="Lexical %" Binding="{Binding LexicalScore}" Width="75" />
+                        <DataGridTextColumn Header="Source covered %" Binding="{Binding SourceCoverage}" Width="115" />
+                        <DataGridTextColumn Header="Candidate-only %" Binding="{Binding CandidateOnlyContentPercent}" Width="115" />
+                        <DataGridTextColumn Header="Suggestion (advisory)" Binding="{Binding Recommendation}" Width="220" />
+                        <DataGridTextColumn Header="Reason / trust limits" Binding="{Binding RecommendationReason}" Width="320" />
+                        <DataGridTextColumn Header="Source path" Binding="{Binding SourcePath}" Width="180" />
+                        <DataGridTextColumn Header="Evidence / limits" Binding="{Binding Evidence}" Width="300" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Source hierarchy">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TreeView ItemsSource="{Binding SourceTree}" SelectedItemChanged="SourceTree_SelectedItemChanged" Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource InkBrush}" BorderBrush="{DynamicResource LineBrush}" AutomationProperties.Name="Retrieved Confluence source tree">
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate DataType="{x:Type vm:SourceTreeItem}" ItemsSource="{Binding Children}">
+                                <TextBlock Text="{Binding Label}" Padding="4" />
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="{DynamicResource LineBrush}" />
+                    <TextBox Grid.Column="2" Text="{Binding SourceTreeDetails, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Selected hierarchy context and key data" />
+                </Grid>
+            </TabItem>
+            <TabItem Header="Coverage warnings">
+                <TextBox Text="{Binding ScanWarnings, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" />
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

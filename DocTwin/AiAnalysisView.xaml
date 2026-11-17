@@ -1,0 +1,42 @@
+﻿<UserControl x:Class="DocTwin.AiAnalysisView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="22">
+        <Grid.RowDefinitions><RowDefinition Height="2*" /><RowDefinition Height="Auto" /><RowDefinition Height="3*" /></Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+         <StackPanel Margin="0,0,8,0">
+            <TextBlock Text="Explain a discovered pair with your approved AI provider" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding ActivePairDetails}" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+            <Button Content="Load selected discovery finding" Command="{Binding PrepareAiPairCommand}" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+            <TextBlock Text="{Binding AiReadiness}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+            <StackPanel IsEnabled="{Binding IsIdle}">
+                <WrapPanel Margin="0,15,0,0">
+                    <ComboBox ItemsSource="{Binding AiProviders}" SelectedItem="{Binding SelectedAiProvider}" Width="180" Padding="8" AutomationProperties.Name="AI provider" />
+                    <TextBlock Text="  Model ID: " VerticalAlignment="Center" />
+                    <TextBox Text="{Binding AiModel, UpdateSourceTrigger=PropertyChanged}" Width="230" Padding="8" AutomationProperties.Name="AI model ID" />
+                </WrapPanel>
+                <StackPanel IsEnabled="{Binding UsesApiKey}">
+                    <TextBlock Text="Chat-completions / Claude Messages API endpoint (review destination before consenting)" Margin="0,14,0,6" FontWeight="SemiBold" />
+                    <TextBox Text="{Binding AiEndpoint, UpdateSourceTrigger=PropertyChanged}" Padding="8" AutomationProperties.Name="AI endpoint" MaxLength="2048" />
+                    <TextBlock Text="Environment variable NAME containing the API key (not the secret)" Margin="0,14,0,6" FontWeight="SemiBold" />
+                    <TextBox Text="{Binding AiKeyVariable, UpdateSourceTrigger=PropertyChanged}" Padding="8" AutomationProperties.Name="AI key environment variable" MaxLength="100" />
+                </StackPanel>
+                <WrapPanel Margin="0,10,0,0">
+                    <Button Content="Save AI profile" Command="{Binding SaveAiSettingsCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" />
+                    <Button Content="Import approved AI configuration" Command="{Binding ImportAiSettingsCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                </WrapPanel>
+                <TextBlock Text="GitHubCopilot uses Copilot SDK/CLI sign-in ('copilot login') with your user profile, not Microsoft 365 Copilot. OpenAICompatible and Claude use API keys from the named environment variable; chat subscriptions do not provide API access. Models must support structured output."
+                           Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,12,0,0" />
+            </StackPanel>
+         </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="1" IsEnabled="{Binding IsIdle}" Margin="0,10,0,10">
+            <CheckBox IsChecked="{Binding AiConsent}" AutomationProperties.Name="Approve sharing the loaded pair with AI" Margin="0,0,0,8">
+                <TextBlock Text="My organisation approves sending BOTH selected page texts, titles, IDs, available owner/parent metadata, source hierarchy path and extraction limitations to this provider/endpoint and model. I understand the provider's data policies and possible charges."
+                           TextWrapping="Wrap" />
+            </CheckBox>
+            <Button Content="Analyse selected pair with AI" Command="{Binding AnalyseCommand}" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Left" />
+        </StackPanel>
+        <TextBox Grid.Row="2" Text="{Binding AiOutput, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="12" AutomationProperties.Name="Advisory AI comparison" />
+    </Grid>
+</UserControl>
