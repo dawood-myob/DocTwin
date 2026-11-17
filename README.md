@@ -1,7 +1,7 @@
 # DocTwin
 
 A Windows WPF application for **read-only Confluence discovery, comparison and human review**.
-The Windows executable and windows use the DocTwin document logo. Developed by
+Developed by
 Dawood Ali.
 
 ## Run
