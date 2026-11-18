@@ -294,6 +294,18 @@ updates; contention fails explicitly rather than blocking the UI indefinitely.
 Malformed existing history is not overwritten. Reviews require positive known
 page versions and at most 4,000 note characters; refresh pages if needed.
 
+## Demo and presentation
+
+- [`docs/demo/DocTwin-demo.mp4`](docs/demo/DocTwin-demo.mp4): a 3.5 minute
+  recording of the real app scanning a Confluence tree, including the
+  sensitive-content guardrail (flagged pages are never sent to AI). Site IDs
+  and tokens are masked in the recording.
+- [`docs/demo/DocTwin-Breakthrough-Build.pptx`](docs/demo/DocTwin-Breakthrough-Build.pptx):
+  a five-slide story deck (waste, AI and data quality, Lean 5S, DocTwin).
+- Screenshots: `docs/demo/app-*.png`.
+- Confluence write-up:
+  <https://myobconfluence.atlassian.net/wiki/spaces/MSS/pages/12542312452>
+
 ## Engineering status and documentation
 
 This is a hardened prototype, **not production-certified**. Permanent xUnit
