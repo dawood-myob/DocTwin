@@ -273,15 +273,27 @@ public partial class ConfluenceViewModel
             cancellation.ThrowIfCancellationRequested();
             var output = new StringBuilder();
             output.AppendLine($"ADVISORY AI ANALYSIS | {SelectedAiProvider} | {AiModel} | {DateTimeOffset.Now:g}");
+            output.AppendLine("PAGES COMPARED");
+            output.AppendLine(DescribePage("Source (page A)", _currentSource));
+            output.AppendLine(DescribePage("Candidate (page B)", _currentCandidate));
+            output.AppendLine();
             output.AppendLine($"Relationship: {result.Relationship}\n{result.Summary}\nSuggested human review: {result.SuggestedAction}\n");
             foreach (var item in result.Evidence)
-                output.AppendLine($"{item.Kind}: {item.Explanation}\nSource quote: {item.SourceQuote}\nCandidate quote: {item.CandidateQuote}\n");
+                output.AppendLine($"{item.Kind}: {item.Explanation}\nQuote from \"{_currentSource.Title}\" (page A): {item.SourceQuote}\nQuote from \"{_currentCandidate.Title}\" (page B): {item.CandidateQuote}\n");
+            if (result.DroppedEvidence > 0)
+                output.AppendLine($"Note: {result.DroppedEvidence} evidence item(s) from the AI were left out because their quotes could not be found in the page text.\n");
             output.AppendLine("Uncertainties: " + string.Join("; ", result.Uncertainties));
             output.AppendLine("Quotations were checked against the extracted texts; explanations still require human verification. No Confluence content was changed.");
             AiOutput = output.ToString();
-            Status = "AI analysis received and evidence quotations validated. This is an advisory result, not a canonical-page or deletion decision.";
+            Status = $"AI analysis of \"{_currentSource.Title}\" and \"{_currentCandidate.Title}\" received and evidence quotations validated. This is an advisory result, not a canonical-page or deletion decision.";
         }, "Requesting optional AI analysis of the selected page pair...");
         if (AiOutput == "No accepted AI result yet. Request in progress...")
-            AiOutput = "No AI analysis was accepted. " + Status;
+            AiOutput = "No AI analysis was accepted for the loaded pair.\n" +
+                (_currentSource != null && _currentCandidate != null
+                    ? DescribePage("Source (page A)", _currentSource) + "\n" + DescribePage("Candidate (page B)", _currentCandidate) + "\n\n"
+                    : "") + Status;
     }
+
+    private static string DescribePage(string label, ConfluencePage page) =>
+        $"{label}: \"{page.Title}\" | page {page.Id} | space {page.SpaceId} | v{page.Version} | updated {page.Updated}\n    {page.Url}";
 }

@@ -27,6 +27,7 @@ public sealed class AiComparisonResult
     [JsonRequired] public List<AiEvidence> Evidence { get; set; } = [];
     [JsonRequired] public string SuggestedAction { get; set; } = string.Empty;
     [JsonRequired] public List<string> Uncertainties { get; set; } = [];
+    [JsonIgnore] public int DroppedEvidence { get; set; }
 }
 
 public sealed class AiEvidence
@@ -156,24 +157,53 @@ public static class AiComparisonContract
             result.Uncertainties.Count > 30 || result.Uncertainties.Any(x => string.IsNullOrWhiteSpace(x) || x.Length > 4000))
             throw new InvalidDataException("AI returned an unsupported or incomplete comparison. No AI findings were accepted.");
 
+        // Quotes are matched ignoring whitespace layout and curly-versus-straight quotes, which models often change.
+        string sourceText = NormaliseForQuote(source.Content);
+        string candidateText = NormaliseForQuote(candidate.Content);
+        var verified = new List<AiEvidence>();
         foreach (var item in result.Evidence)
         {
-            if (item == null || !EvidenceKinds.Contains(item.Kind) || string.IsNullOrWhiteSpace(item.Explanation) ||
-                item.Explanation.Length > 4000 || item.SourceQuote == null || item.CandidateQuote == null ||
-                item.SourceQuote.Length > 4000 || item.CandidateQuote.Length > 4000 ||
-                (string.IsNullOrWhiteSpace(item.SourceQuote) && string.IsNullOrWhiteSpace(item.CandidateQuote)) ||
-                (item.SourceQuote.Length > 0 && !source.Content.Contains(item.SourceQuote, StringComparison.Ordinal)) ||
-                (item.CandidateQuote.Length > 0 && !candidate.Content.Contains(item.CandidateQuote, StringComparison.Ordinal)) ||
-                (item.Kind == "SourceOnly" && (string.IsNullOrWhiteSpace(item.SourceQuote) || item.CandidateQuote.Length != 0)) ||
-                (item.Kind == "CandidateOnly" && (string.IsNullOrWhiteSpace(item.CandidateQuote) || item.SourceQuote.Length != 0)) ||
-                (item.Kind is "Similarity" or "Difference" or "PotentialConflict" &&
-                 (string.IsNullOrWhiteSpace(item.SourceQuote) || string.IsNullOrWhiteSpace(item.CandidateQuote))))
-                throw new InvalidDataException("AI evidence did not match the actual page text or expected evidence structure. No AI findings were accepted.");
+            if (IsVerifiedEvidence(item, sourceText, candidateText)) verified.Add(item);
         }
+        result.DroppedEvidence = result.Evidence.Count - verified.Count;
+        result.Evidence = verified;
         if (result.Relationship is not ("Uncertain" or "Unrelated") && result.Evidence.Count == 0)
-            throw new InvalidDataException("AI asserted a relationship without supporting quotations. No AI findings were accepted.");
+            throw new InvalidDataException(result.DroppedEvidence > 0
+                ? "AI evidence did not match the actual page text or expected evidence structure. No AI findings were accepted."
+                : "AI asserted a relationship without supporting quotations. No AI findings were accepted.");
         if (result.Relationship == "ExactDuplicate" && !string.Equals(source.Content, candidate.Content, StringComparison.Ordinal))
             throw new InvalidDataException("AI claimed exact duplication but the extracted texts differ. No AI findings were accepted.");
         return result;
+    }
+
+    private static bool IsVerifiedEvidence(AiEvidence? item, string sourceText, string candidateText)
+    {
+        if (item == null || !EvidenceKinds.Contains(item.Kind) || string.IsNullOrWhiteSpace(item.Explanation) ||
+            item.Explanation.Length > 4000 || item.SourceQuote == null || item.CandidateQuote == null ||
+            item.SourceQuote.Length > 4000 || item.CandidateQuote.Length > 4000)
+            return false;
+        bool hasSource = !string.IsNullOrWhiteSpace(item.SourceQuote), hasCandidate = !string.IsNullOrWhiteSpace(item.CandidateQuote);
+        if (!hasSource && !hasCandidate) return false;
+        if (hasSource && !sourceText.Contains(NormaliseForQuote(item.SourceQuote), StringComparison.Ordinal)) return false;
+        if (hasCandidate && !candidateText.Contains(NormaliseForQuote(item.CandidateQuote), StringComparison.Ordinal)) return false;
+        return item.Kind switch
+        {
+            "SourceOnly" => hasSource && !hasCandidate,
+            "CandidateOnly" => hasCandidate && !hasSource,
+            _ => hasSource && hasCandidate
+        };
+    }
+
+    private static string NormaliseForQuote(string text)
+    {
+        var builder = new System.Text.StringBuilder(text.Length);
+        bool space = false;
+        foreach (char c in text)
+        {
+            if (char.IsWhiteSpace(c)) { space = builder.Length > 0; continue; }
+            if (space) { builder.Append(' '); space = false; }
+            builder.Append(c switch { '\u2018' or '\u2019' => '\'', '\u201C' or '\u201D' => '"', _ => c });
+        }
+        return builder.ToString();
     }
 }

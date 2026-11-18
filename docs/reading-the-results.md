@@ -363,6 +363,36 @@ and visible content.
 
 ---
 
+## AI analysis of one pair (the "AI analysis (optional)" tab)
+
+Explains one pair of pages from the Candidate pairs grid. Press **Load selected
+discovery finding**, check the provider and model, tick the consent box and press
+**Analyse selected pair with AI**.
+
+**What the result shows**
+
+| Part | Meaning |
+|---|---|
+| Header | Provider, model and time. |
+| PAGES COMPARED | Source (page A) and Candidate (page B): title, page ID, space, version, last updated and link, so you always know which pages the answer is about. |
+| Relationship | `ExactDuplicate`, `NearDuplicate`, `Related`, `PotentialConflict`, `Unrelated` or `Uncertain`. |
+| Suggested human review | The AI's suggested next step. It is advice, never an action. |
+| Evidence | Each item has a kind (`Similarity`, `Difference`, `SourceOnly`, `CandidateOnly`, `PotentialConflict`), an explanation, and quotes from page A and page B. |
+| Uncertainties | What the AI could not judge, such as macros that were not extracted. |
+
+**How quotes are checked.** Every quote must be found in the captured page text.
+Spacing, line breaks and curly-versus-straight quote marks are ignored when
+matching. An evidence item whose quote cannot be found is left out and the result
+says how many were dropped. If a relationship is claimed and none of its evidence
+survives, the whole answer is rejected with "AI evidence did not match the actual
+page text". Try again, or use a different model.
+
+**Limits.** One pair at a time. Pages made mostly of macros, tables or code have little extractable
+text, so `Uncertain` is a common and honest answer. Pairs where either page is
+flagged **Sensitive content** are never sent.
+
+---
+
 ## Sensitive content guardrail
 
 Confluence pages sometimes hold passwords, keys or tokens that were pasted by
