@@ -1,0 +1,30 @@
+name: Windows build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore .\DocTwin.sln --nologo
+      - name: Build Release with warnings as errors
+        run: dotnet build .\DocTwin.sln -c Release --no-restore --nologo -warnaserror
+      - name: Record test limitation
+        shell: pwsh
+        run: |
+          Write-Warning "Build-only workflow: no persistent test project or coverage gate is registered."
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "Build only: persistent automated tests and coverage are not yet registered. This workflow is not production certification."

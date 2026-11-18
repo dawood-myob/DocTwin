@@ -11,6 +11,11 @@ public partial class ConfluenceViewModel
     private readonly AiSettingsStore _aiSettings = new();
     private readonly Dictionary<AiProvider, AiProfile> _aiProfiles = [];
 
+    public string AiKeyStatus => AiCredentials.Describe(SelectedAiProvider, AiKeyVariable.Trim());
+
+    [RelayCommand]
+    private void RecheckAiKey() => OnPropertyChanged(nameof(AiKeyStatus));
+
     public void LoadAiSettings()
     {
         try

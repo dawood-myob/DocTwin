@@ -53,7 +53,7 @@
         </WrapPanel>
 <TabControl Grid.Row="2" MinHeight="210">
             <TabItem Header="Candidate pairs">
-                <DataGrid ItemsSource="{Binding Findings}" SelectedItem="{Binding SelectedFinding, Mode=TwoWay}" SelectionMode="Single" SelectionUnit="FullRow" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" EnableRowVirtualization="True" AutomationProperties.Name="Discovered duplicate candidates">
+                <DataGrid ItemsSource="{Binding Findings}" SelectedItem="{Binding SelectedFinding, Mode=TwoWay}" SelectionMode="Single" SelectionUnit="FullRow" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserSortColumns="True" EnableRowVirtualization="True" AutomationProperties.Name="Discovered duplicate candidates">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="Source page" SortMemberPath="SourceTitle" Width="210">
                             <DataGridTemplateColumn.CellTemplate>
@@ -69,15 +69,20 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Space ID" Binding="{Binding CandidateSpace}" Width="85" />
-                        <DataGridTextColumn Header="Relationship" Binding="{Binding Relationship}" Width="160" />
-                        <DataGridTextColumn Header="Match basis" Binding="{Binding MatchBasis}" Width="220" /><DataGridTextColumn Header="Title overlap %" Binding="{Binding TitleCoverage}" Width="105" /><DataGridTextColumn Header="Lexical %" Binding="{Binding LexicalScore}" Width="75" />
-                        <DataGridTextColumn Header="Source covered %" Binding="{Binding SourceCoverage}" Width="115" />
-                        <DataGridTextColumn Header="Candidate-only %" Binding="{Binding CandidateOnlyContentPercent}" Width="115" />
-                        <DataGridTextColumn Header="Suggestion (advisory)" Binding="{Binding Recommendation}" Width="220" />
-                        <DataGridTextColumn Header="Reason / trust limits" Binding="{Binding RecommendationReason}" Width="320" />
-                        <DataGridTextColumn Header="Source path" Binding="{Binding SourcePath}" Width="180" />
-                        <DataGridTextColumn Header="Evidence / limits" Binding="{Binding Evidence}" Width="300" />
+                        <DataGridTextColumn Header="Titles match" Binding="{Binding TitleMatchText}" SortMemberPath="TitleMatchText" Width="95" />
+                        <DataGridTextColumn Header="Content verdict (inner content)" Binding="{Binding ContentVerdict}" SortMemberPath="ContentVerdictRank" Width="250" />
+                        <DataGridTextColumn Header="Content match %" Binding="{Binding ContentMatchPercent, StringFormat={}{0:0.#}}" SortMemberPath="ContentMatchPercent" Width="115" />
+                        <DataGridTextColumn Header="Word similarity %" Binding="{Binding WordSimilarityPercent, StringFormat={}{0:0.#}}" SortMemberPath="WordSimilarityPercent" Width="120" />
+                        <DataGridTextColumn Header="Differing numbers / IDs" Binding="{Binding DifferingFacts}" SortMemberPath="DifferingFacts" Width="240" />
+                        <DataGridTextColumn Header="Space ID" Binding="{Binding CandidateSpace}" SortMemberPath="CandidateSpace" Width="85" />
+                        <DataGridTextColumn Header="Relationship" Binding="{Binding Relationship}" SortMemberPath="Relationship" Width="160" />
+                        <DataGridTextColumn Header="Match basis" Binding="{Binding MatchBasis}" SortMemberPath="MatchBasis" Width="220" /><DataGridTextColumn Header="Title overlap %" Binding="{Binding TitleCoverage}" SortMemberPath="TitleCoverage" Width="105" /><DataGridTextColumn Header="Lexical %" Binding="{Binding LexicalScore}" SortMemberPath="LexicalScore" Width="75" />
+                        <DataGridTextColumn Header="Source covered %" Binding="{Binding SourceCoverage}" SortMemberPath="SourceCoverage" Width="115" />
+                        <DataGridTextColumn Header="Candidate-only %" Binding="{Binding CandidateOnlyContentPercent}" SortMemberPath="CandidateOnlyContentPercent" Width="115" />
+                        <DataGridTextColumn Header="Suggestion (advisory)" Binding="{Binding Recommendation}" SortMemberPath="Recommendation" Width="220" />
+                        <DataGridTextColumn Header="Reason / trust limits" Binding="{Binding RecommendationReason}" SortMemberPath="RecommendationReason" Width="320" />
+                        <DataGridTextColumn Header="Source path" Binding="{Binding SourcePath}" SortMemberPath="SourcePath" Width="180" />
+                        <DataGridTextColumn Header="Evidence / limits" Binding="{Binding Evidence}" SortMemberPath="Evidence" Width="300" />
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>

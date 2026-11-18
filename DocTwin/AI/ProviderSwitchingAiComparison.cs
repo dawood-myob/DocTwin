@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using DocTwin.Networking;
 using GitHub.Copilot;
 
 namespace DocTwin.AI;
@@ -37,9 +38,7 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
             throw new InvalidDataException("Claude requires an HTTPS Messages API endpoint.");
         if (string.IsNullOrWhiteSpace(request.ApiKeyEnvironmentVariable))
             throw new InvalidDataException("Enter the name of the environment variable containing the AI API key, not the key itself.");
-        var key = Environment.GetEnvironmentVariable(request.ApiKeyEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(key) && OperatingSystem.IsWindows())
-            key = Environment.GetEnvironmentVariable(request.ApiKeyEnvironmentVariable, EnvironmentVariableTarget.User);
+        var key = AiCredentials.Read(request.ApiKeyEnvironmentVariable);
         if (string.IsNullOrWhiteSpace(key))
             throw new InvalidDataException($"Set the {request.ApiKeyEnvironmentVariable} environment variable before using this provider. A chat subscription is not an API key. No page content was sent.");
 
@@ -87,8 +86,8 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
             };
             throw new InvalidDataException($"AI provider returned HTTP {(int)response.StatusCode}. {guidance} No AI findings were accepted. The request was not automatically retried.");
         }
-        await response.Content.LoadIntoBufferAsync(1024 * 1024, cancellationToken);
-        using var document = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync(cancellationToken));
+        var bytes = await BoundedResponseBody.ReadAsync(response.Content, 1024 * 1024, httpClient.Timeout, cancellationToken);
+        using var document = JsonDocument.Parse(bytes);
         var root = document.RootElement;
         if (root.ValueKind != JsonValueKind.Object)
             throw new InvalidDataException("AI provider returned an unexpected response structure.");
@@ -131,12 +130,16 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
             .ToDictionary(entry => (string)entry.Key, entry => (string)entry.Value!, StringComparer.OrdinalIgnoreCase);
         environment.Remove("COPILOT_SDK_AUTH_TOKEN");
         environment.Remove("COPILOT_RUNTIME_PROCESS_FILE_LOGGING");
+        environment.Remove(AiCredentials.CopilotVariable);
         environment["COPILOT_GITHUB_TELEMETRY_DISABLED"] = "true";
+        // COPILOT_GITHUB_TOKEN is used when present; otherwise the user's 'copilot login' session applies.
+        string? gitHubToken = AiCredentials.Read(AiCredentials.CopilotVariable);
         await using var client = new CopilotClient(new CopilotClientOptions
         {
             Mode = CopilotClientMode.Empty,
             BaseDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".copilot"),
-            UseLoggedInUser = true,
+            GitHubToken = gitHubToken,
+            UseLoggedInUser = gitHubToken == null,
             LogLevel = CopilotLogLevel.None,
             Environment = environment,
             WorkingDirectory = AppContext.BaseDirectory
@@ -146,7 +149,7 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
             await client.StartAsync(cancellationToken);
             var auth = await client.GetAuthStatusAsync(cancellationToken);
             if (!auth.IsAuthenticated)
-                throw new InvalidDataException("GitHub Copilot SDK is not signed in. Run 'copilot login' in a terminal and check your Copilot subscription. IDE and Microsoft 365 Copilot sign-ins are not assumed. No page content was sent.");
+                throw new InvalidDataException("GitHub Copilot SDK is not signed in. Set the COPILOT_GITHUB_TOKEN environment variable (fine-grained token with the 'Copilot Requests' permission) or run 'copilot login' in a terminal, and check your Copilot subscription. IDE and Microsoft 365 Copilot sign-ins are not assumed. No page content was sent.");
             await using var session = await client.CreateSessionAsync(new SessionConfig
             {
                 Model = request.Model,

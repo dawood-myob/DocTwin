@@ -8,6 +8,10 @@ zero regressions, complete discovery or enterprise policy compliance.
 
 - Source-title/identifier-led Quick/Deep discovery with separate functional
   overlap evidence, streamed findings and explicit partial-coverage reporting.
+- Response-body deadlines for Confluence and AI, preserving explicit cancellation
+  and preventing indefinitely stalled response bodies after headers.
+- Stable .NET 10 SDK selection and a Windows build-only CI workflow, explicitly
+  labelled as not running a test/coverage gate.
 - Visible, selectable review/evidence areas at minimum supported window size.
 - AI preparation without transmission; visible per-pair consent beside Analyse;
   unsaved-profile preflight; actionable provider errors; no automatic billed
@@ -31,7 +35,9 @@ zero regressions, complete discovery or enterprise policy compliance.
 | Native Visual Studio build of DocTwin.csproj | Successful after changes | Loaded production project compiles; not test discovery |
 | Release build, warnings as errors | 0 warnings, 0 errors | `dotnet build .\DocTwin\DocTwin.csproj -c Release --no-restore --nologo -warnaserror -v minimal` |
 | Framework-dependent Release publish | Successful | Output under `DocTwin\bin\Release\net10.0-windows\publish`; not signed or deployed |
-| Session-only regression verification | **262 checks passed** | Synthetic service, contracts, MVVM, actual WPF layout, persistence and help; not 262 registered xUnit tests |
+| Session-only regression verification | **272 checks passed** | Synthetic service, contracts, MVVM, actual WPF layout, persistence and help; not 272 registered xUnit tests |
+| Build workflow | YAML structure validated locally; Release build and publish passed on this Windows machine | GitHub-hosted execution has not yet been verified; workflow is build-only, not a test/coverage gate |
+| Action contrast | Light and dark normal/hover/pressed primary-action colors >= 4.5:1 | Runtime palette checks only, not a complete WCAG assessment |
 | Actual rebuilt executable | Responsive main window, normal zero-code shutdown | Startup/lifecycle smoke; content-free process-correlated JSON start/exit events persisted |
 | Live AI: OpenAICompatible | Valid structured NearDuplicate result, 2 evidence entries | Synthetic content only, existing local profile; no copied/printed secrets |
 | Live AI: Claude | Valid structured NearDuplicate result, 2 evidence entries | Synthetic content only; provider recommendations remain advisory |
@@ -71,6 +77,9 @@ Verified: 401/403/404/400 do not retry; 429/502/503/504 attempt exactly three
 reads; all retry/final response bodies are disposed; delta/date Retry-After over
 30 seconds is not shortened; cancellation interrupts backoff without another
 send; a third concurrent send is explicitly rejected; permits are released.
+Successful headers followed by a stalled Confluence or AI response body time out
+without accepting partial results; caller cancellation remains distinguishable,
+responses are disposed, and the AI request is not retried.
 
 Four transient logical failures produce 12 total sends, followed by open-circuit
 rejection with no send. After the actual 30-second break, a successful half-open
@@ -109,9 +118,15 @@ proof of no memory leaks/thread-pool starvation.
 | Retained managed heap across ten forced-GC samples during scans | Growth <= 64 MiB from warm baseline | Maximum growth 1.20 MiB; samples approximately 2.30-2.31 MiB |
 | 50 ms thread-pool heartbeat during workload | Maximum observed interval <= 2,000 ms | 249.74 ms |
 
-Total sample duration: 5.83 seconds. These small in-memory pages deliberately
-exercise repeatability/concurrency, not worst-case page sizes, real latency,
-UI event backlogs over hours or server quotas. Prior regression checks also
+A subsequent 120.1-second synthetic soak completed 10,112 scans in batches of
+four (42,369,280 exact expected findings checked). Twelve forced-GC samples
+showed maximum retained-heap growth of 0.02 MiB; the maximum 100 ms heartbeat
+interval was 122.4 ms. This local run did not use live services. It is longer
+than the initial 5.83-second smoke but is not a multi-hour soak or a leak proof.
+
+These small in-memory pages deliberately exercise repeatability/concurrency,
+not worst-case page sizes, real latency, UI event backlogs over hours or server
+quotas. Prior regression checks also
 compare two completely different 10,000-line pages without dropping evidence.
 Timings depend on shared-machine load and are not release SLAs.
 
@@ -124,6 +139,7 @@ Do not treat it as CI infrastructure. The following commands were used locally:
 ```powershell
 dotnet run --project .\session-state\files\discovery-verification\Verification.csproj --nologo
 dotnet run --project .\session-state\files\discovery-verification\Verification.csproj --no-build -- --stress
+dotnet run --project .\session-state\files\discovery-verification\Verification.csproj --no-build -- --soak
 dotnet run --project .\session-state\files\discovery-verification\Verification.csproj --no-build -- --live-ai
 dotnet run --project .\session-state\files\discovery-verification\Verification.csproj --no-build -- --known-pair
 dotnet list .\DocTwin\DocTwin.csproj package --vulnerable --include-transitive --no-restore
@@ -141,10 +157,10 @@ text local. Do not run these switches unattended in CI or load-test live APIs.
 | 90%+ coverage | **Unmeasured**, not achieved/claimed. Run the registered suite with coverage and publish line/branch evidence for actual business/analysis/client services. A passing build or check count is not a coverage percentage. |
 | Durable automated integration/stress deliverables and CI | **Blocked by persistent test wiring**. Session fixtures/measurements are evidence, not delivered xUnit or a clean-clone stress pipeline. Register canonical tests, retain deterministic fake-server fixtures and a repeatable longer-running load runner, then wire CI discovery. |
 | Representative semantic recall/precision | Validate a labelled owner-approved dataset, including rewritten/combined references, same IDs with distinct purposes, conflicts and unrelated titles. One known pair is not a recall guarantee. |
-| Longer soak / peak enterprise workload | Run approved sustained and burst workloads with real-size synthetic pages, cancellation, UI responsiveness, retention and resource evidence over an agreed duration. No live API stress without explicit provider/admin approval. |
-| Accessibility | Complete keyboard-only, assistive-technology, scaling/high-contrast and contrast review; obtain WCAG AA assessment where applicable. |
+| Longer soak / peak enterprise workload | A two-minute synthetic concurrent soak passed, but run approved longer sustained and burst workloads with real-size pages, cancellation, UI responsiveness, retention and resource evidence over an agreed duration. No live API stress without explicit provider/admin approval. |
+| Accessibility | Primary-action text meets 4.5:1 in the measured light/dark palette states. Complete keyboard-only, assistive-technology, scaling/high-contrast and broader contrast review; obtain WCAG AA assessment where applicable. |
 | Authentication/distribution policy | Approve token-based local pilot or design approved OAuth before broad distribution. Current API-token support is not proof of Atlassian/MYOB app-policy compliance. |
-| Deployment assurance | Pin/review SDK selection, signing and packaging; stage install/upgrade/rollback and backup compatibility tests; approve ownership/support and dependency licences. |
+| Deployment assurance | SDK selection is pinned to stable .NET 10 and a build-only Windows CI workflow is provided. Signing, packaging, stage install/upgrade/rollback and backup compatibility tests, ownership/support and dependency-licence approval remain open. |
 | AI governance | Approve destinations, permitted content, data policies, costs, CLI/runtime behavior and model access. Synthetic adapter success does not approve sending internal pages. |
 | Owner acceptance | Confirm maintained guidance/legacy retirement decisions and report usefulness. DocTwin does not execute content changes. |
 

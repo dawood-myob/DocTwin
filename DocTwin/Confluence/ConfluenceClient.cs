@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using DocTwin.Networking;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.RateLimiting;
@@ -91,8 +92,8 @@ public sealed partial class ConfluenceClient(HttpClient httpClient, PageContentE
             {
                 if (response.Content.Headers.ContentLength > 10 * 1024 * 1024)
                     throw new ConfluenceException("The page response exceeds the 10 MB prototype limit.");
-                await response.Content.LoadIntoBufferAsync(10 * 1024 * 1024, cancellationToken);
-                var document = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync(cancellationToken));
+                var bytes = await BoundedResponseBody.ReadAsync(response.Content, 10 * 1024 * 1024, httpClient.Timeout, cancellationToken);
+                var document = JsonDocument.Parse(bytes);
                 if (document.RootElement.ValueKind != JsonValueKind.Object)
                 {
                     document.Dispose();
@@ -125,6 +126,10 @@ public sealed partial class ConfluenceClient(HttpClient httpClient, PageContentE
         catch (RateLimiterRejectedException)
         {
             throw new ConfluenceException("DocTwin's Confluence read concurrency limit was reached. Wait for the active reads to finish, then retry.", stopScan: true);
+        }
+        catch (TimeoutException)
+        {
+            throw new ConfluenceException("The Confluence response body timed out. Check the network and retry; no partial page was analysed.", stopScan: true);
         }
     }
 

@@ -56,7 +56,9 @@ in scope. AI is optional and requires separate organisational approval.
   two retries for 429/502/503/504 and transport failures. The circuit wraps
   retries so it measures logical reads. Retry-After over 30 seconds stops the
   operation. Limiting covers sends through response headers, not subsequent
-  JSON parsing. No fallback fabricates data or marks partial coverage complete.
+  JSON parsing. Response-body transfer has its own configured HTTP timeout;
+  caller cancellation is preserved. No fallback fabricates data or marks partial
+  coverage complete.
 - **ADR-004: consent-isolated AI (accepted).** Provider settings and the loaded
   pair define the sharing boundary. Changing either revokes consent. The
   consent checkbox remains beside the action. Validate profiles before sending
@@ -207,9 +209,8 @@ References: [Rovo MCP overview](https://developer.atlassian.com/cloud/rovo-mcp/)
 The Visual Studio project-inventory tool was unavailable during initial
 inspection, so test-project creation and loaded-solution verification have not
 been performed. Resolve that tooling limitation before changing project wiring.
-The current project targets `net10.0-windows`; .NET 10 SDK and Windows Desktop
-runtime are installed. No `global.json` is present, and the CLI currently
-selects the installed .NET 11 SDK by default.
+The project targets `net10.0-windows`; root `global.json` now selects SDK
+10.0.404 or a later stable .NET 10 feature band instead of .NET 11.
 
 ## Subsequent phases and risks
 

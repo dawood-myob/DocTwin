@@ -71,9 +71,11 @@ known nodes where possible.
   failure ratio >= 75%; break for 30 seconds. A successful half-open probe
   closes it. Authentication and malformed response errors do not count as
   transient service outages.
-- GET timeout: 45 seconds. View-model operation deadline: three minutes, or
-  60 minutes for discovery. Cancellation reaches sends and backoff. CPU work
-  already running may complete before cancellation is observed.
+- GET timeout: 45 seconds for the send through headers and a separate 45-second
+  deadline for body transfer. A body timeout stops the scan without accepting
+  partial content; it is not retried. View-model operation deadline: three
+  minutes, or 60 minutes for discovery. Cancellation reaches sends, body reads
+  and backoff. CPU work already running may finish before cancellation is observed.
 - No fabricated-success fallback. Skips, caps, cancellation and search failures
   must remain visible as incomplete coverage. Do not interpret 'no matches' as
   proof that no redundancy exists.
@@ -101,8 +103,10 @@ secret value into profile JSON.
 
 Maximum combined page-text/hierarchy input: 160,000 characters, no silent
 truncation. This is not a token-limit guarantee: model limits and JSON-envelope
-overhead still apply. HTTP responses are bounded to 1 MB. No AI POST is
-silently retried; manually repeating a request may incur another charge.
+overhead still apply. HTTP responses are bounded to 1 MB. The configured
+2-minute HTTP timeout applies separately to the send through headers and to
+response-body transfer. No AI POST is silently retried, including after a body
+timeout; manually repeating a request may incur another charge.
 
 Result fields (all required): `relationship`, `summary`, `evidence`,
 `suggestedAction`, `uncertainties`. Unknown fields/enum values, invalid shapes,
@@ -185,8 +189,11 @@ event records exception type/boundary only, not a potentially sensitive stack.
 
 ## Build, deployment and rollback runbook
 
-1. Use Windows with .NET 10 Desktop runtime; install a compatible SDK to build.
-   No `global.json` is pinned; CLI SDK selection must be reviewed in release CI.
+1. Use Windows with .NET 10 Desktop runtime and a stable .NET 10 SDK. The root
+   `global.json` selects 10.0.404 or a later stable .NET 10 feature band; it does
+   not silently select a .NET 11 preview. The Windows GitHub Actions workflow
+   restores and builds Release with warnings as errors; it is build-only and
+   does not establish test discovery or coverage.
 2. Restore/build using the repository entry point:
    `dotnet restore .\DocTwin.sln`, then
    `dotnet build .\DocTwin.sln --no-restore -warnaserror`.

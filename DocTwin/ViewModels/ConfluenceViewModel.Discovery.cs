@@ -40,7 +40,7 @@ public partial class ConfluenceViewModel
     [ObservableProperty] private AiProvider _selectedAiProvider = AiProvider.GitHubCopilot;
     [ObservableProperty] private string _aiModel = "gpt-4.1";
     [ObservableProperty] private string _aiEndpoint = "https://api.openai.com/v1/chat/completions";
-    [ObservableProperty] private string _aiKeyVariable = "DOCTWIN_OPENAI_API_KEY";
+    [ObservableProperty] private string _aiKeyVariable = AiCredentials.OpenAiVariable;
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AnalyseCommand))]
     [NotifyPropertyChangedFor(nameof(AiReadiness))]
@@ -86,13 +86,14 @@ public partial class ConfluenceViewModel
         AiOutput = "AI provider changed. Review the endpoint, model, credential source and data-sharing consent before requesting analysis.";
         AiModel = value switch { AiProvider.Claude => "claude-sonnet-4-6", _ => "gpt-4.1" };
         AiEndpoint = value == AiProvider.Claude ? "https://api.anthropic.com/v1/messages" : "https://api.openai.com/v1/chat/completions";
-        AiKeyVariable = value == AiProvider.Claude ? "ANTHROPIC_API_KEY" : "DOCTWIN_OPENAI_API_KEY";
+        AiKeyVariable = value == AiProvider.Claude ? AiCredentials.ClaudeVariable : AiCredentials.OpenAiVariable;
         ApplySavedAiProfile();
         OnPropertyChanged(nameof(UsesApiKey));
+        OnPropertyChanged(nameof(AiKeyStatus));
     }
     partial void OnAiEndpointChanged(string value) { AiConsent = false; AiOutput = "AI endpoint changed. Review the destination and approve data sharing again."; }
     partial void OnAiModelChanged(string value) { AiConsent = false; AiOutput = "AI model changed. Request a new analysis for this model."; }
-    partial void OnAiKeyVariableChanged(string value) { AiConsent = false; }
+    partial void OnAiKeyVariableChanged(string value) { AiConsent = false; OnPropertyChanged(nameof(AiKeyStatus)); }
 
     [RelayCommand(CanExecute = nameof(CanStart))]
     private async Task ScanAsync()
@@ -147,7 +148,7 @@ public partial class ConfluenceViewModel
                     if (node.ParentId != null && nodes.TryGetValue(node.ParentId, out var parent)) parent.Children.Add(nodes[node.Id]);
                     else SourceTree.Add(nodes[node.Id]);
                 foreach (var finding in results.Findings.OrderByDescending(x => x.Relationship.StartsWith("Exact", StringComparison.Ordinal))
-                    .ThenByDescending(x => x.LexicalScore).ThenByDescending(x => x.SmallerPageCoverage))
+                    .ThenBy(x => x.ContentVerdictRank).ThenByDescending(x => x.LexicalScore).ThenByDescending(x => x.SmallerPageCoverage))
                     Findings.Add(finding);
                 SelectedFinding = selection != null && Findings.Contains(selection) ? selection : Findings.FirstOrDefault();
                 ScanCoverage = $"{results.Mode} scan. Title searches: {results.TargetedQueries}; title-search candidates: {results.TargetedCandidates}; search errors: {results.SearchFailures}. External body attempts: {results.ExternalAttempts}; " +
@@ -176,6 +177,8 @@ public partial class ConfluenceViewModel
             SourceUrl = finding.Source.Url.AbsoluteUri;
             CandidateUrl = finding.Candidate.Url.AbsoluteUri;
             PresentComparison(finding.Source, finding.Candidate, result);
+            if (finding.Content is { } content)
+                Summary += $"\nContent engine (titles match): {content.Label}. {content.Explanation} Differing numbers/identifiers: {content.DifferingFacts}. {content.Limitation}";
             _currentSourcePath = finding.SourcePath;
             _currentRootId = finding.SourceRootId;
             _currentRootTitle = finding.SourceRootTitle;

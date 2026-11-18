@@ -27,6 +27,15 @@ public sealed record DuplicateFinding(ConfluencePage Source, ConfluencePage Cand
     public string RootContext { get; init; } = string.Empty;
     public string SourceRootId { get; init; } = string.Empty;
     public string? SourceRootTitle { get; init; }
+    public bool TitlesMatch { get; init; }
+    public bool TitleOnly { get; init; }
+    public ContentAssessment? Content { get; init; }
+    public string TitleMatchText => TitlesMatch ? "Yes" : "No";
+    public string ContentVerdict => Content?.Label ?? "Not assessed (titles differ)";
+    public int ContentVerdictRank => Content?.Rank ?? int.MaxValue;
+    public double? ContentMatchPercent => Content?.ContentMatchPercent;
+    public double? WordSimilarityPercent => Content?.WordCosinePercent;
+    public string DifferingFacts => Content?.DifferingFacts ?? string.Empty;
 }
 public sealed class DiscoveryResults
 {
@@ -48,6 +57,7 @@ public sealed class DiscoveryResults
     public int AccessDeniedPages { get; set; }
     public int UnavailablePages { get; set; }
     public int RequestFailedPages { get; set; }
+    public int TitleOnlyFindings { get; set; }
     public string SkipSummary => $"{FailedPages} pages skipped (empty/unsupported: {EmptyPages}; size limits: {LimitedPages}; access denied: {AccessDeniedPages}; missing/not visible: {UnavailablePages}; other read errors: {RequestFailedPages})";
     public bool SourceComplete { get; set; }
     public bool SourceHierarchyComplete { get; set; }
@@ -62,6 +72,7 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
 {
     public const int QuickPageLimit = 100;
     public const int QuickMetadataLimit = 2000;
+    public const int TitleOnlyFindingLimit = 500;
 
     public async Task ScanAsync(ConnectionProfile profile, string token, string rootId,
         IReadOnlyList<string> spaceKeys, int sourceLimit, int externalLimit, double threshold,
@@ -179,12 +190,15 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
         var sources = results.SourcePages.Select(x => new IndexedPage(x.Page, x.Path)).ToArray();
         var postings = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         var titlePostings = new Dictionary<string, List<int>>(StringComparer.Ordinal);
+        var titleKeyPostings = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         for (int i = 0; i < sources.Length; i++)
         {
             foreach (string shingle in sources[i].Shingles)
                 AddPosting(postings, shingle, i);
             foreach (string term in sources[i].TitleWords)
                 AddPosting(titlePostings, term, i);
+            if (sources[i].TitleKey.Length > 0)
+                AddPosting(titleKeyPostings, sources[i].TitleKey, i);
         }
         var findingPairs = results.Findings.Select(x => OrderedPair(x.Source.Id, x.Candidate.Id)).ToHashSet();
         var fingerprintGroups = sources.Select((page, index) => (page.Fingerprint, index))
@@ -207,6 +221,10 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
             foreach (int candidateIndex in fingerprintGroups[sources[i].Fingerprint])
                 if (candidateIndex > i)
                     candidates.Add(candidateIndex);
+            if (titleKeyPostings.TryGetValue(sources[i].TitleKey, out var sameTitle))
+                foreach (int candidateIndex in sameTitle)
+                    if (candidateIndex > i)
+                        candidates.Add(candidateIndex);
             foreach (int candidateIndex in candidates.Order())
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -214,7 +232,7 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
                 if (!findingPairs.Add(pair))
                     continue;
                 var finding = Match(sources[i], sources[candidateIndex], threshold);
-                if (finding == null)
+                if (finding == null || !WithinTitleOnlyBudget(finding, results))
                     continue;
                 if (results.Findings.Count >= 10000)
                     throw new InvalidDataException("The 10,000-finding memory limit would be exceeded. Results are partial; narrow the source hierarchy.");
@@ -267,6 +285,8 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
                 for (int i = 0; i < sources.Length; i++)
                     if (sources[i].Fingerprint == indexed.Fingerprint)
                         candidates.Add(i);
+                if (indexed.TitleKey.Length > 0 && titleKeyPostings.TryGetValue(indexed.TitleKey, out var sameTitle))
+                    candidates.UnionWith(sameTitle);
                 var matches = await Task.Run(() => candidates.Select(i => Match(sources[i], indexed, threshold))
                     .Where(x => x != null).Select(x => x!).ToArray(), cancellationToken);
                 if (matches.Length > 0)
@@ -276,7 +296,7 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
                     foreach (var match in matches)
                     {
                         var pair = OrderedPair(match.Source.Id, match.Candidate.Id);
-                        if (!findingPairs.Add(pair))
+                        if (!findingPairs.Add(pair) || !WithinTitleOnlyBudget(match, results))
                             continue;
                         if (results.Findings.Count >= 10000)
                             throw new InvalidDataException("The 10,000-finding memory limit would be exceeded. Results are partial; narrow the search scope.");
@@ -397,6 +417,22 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
         results.ExternalComplete = exhausted;
     }
 
+    // Same-title pages with unrelated content are reported for transparency, but bounded so generic titles cannot flood results.
+    private static bool WithinTitleOnlyBudget(DuplicateFinding finding, DiscoveryResults results)
+    {
+        if (!finding.TitleOnly)
+            return true;
+        if (results.TitleOnlyFindings >= TitleOnlyFindingLimit)
+        {
+            if (results.TitleOnlyFindings == TitleOnlyFindingLimit)
+                results.Warnings.Add($"More than {TitleOnlyFindingLimit} same-title pairs with different content were found; the rest are not listed. They were verified as non-duplicates by content and are not duplicate findings.");
+            results.TitleOnlyFindings++;
+            return false;
+        }
+        results.TitleOnlyFindings++;
+        return true;
+    }
+
     private static List<string[]> BuildTitleQueries(HashSet<string>[] titles)
     {
         var queries = titles.SelectMany(x => x).Where(x => x.Length <= 100 && TitleIdentifierRegex().IsMatch(x))
@@ -481,6 +517,7 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
     private static DuplicateFinding? Match(IndexedPage source, IndexedPage candidate, double threshold)
     {
         bool exact = source.Fingerprint == candidate.Fingerprint;
+        bool titlesMatch = source.TitleKey.Length > 0 && source.TitleKey == candidate.TitleKey;
         int common = source.Shingles.Count(candidate.Shingles.Contains);
         int union = source.Shingles.Count + candidate.Shingles.Count - common;
         double jaccard = union == 0 ? 0 : (double)common / union;
@@ -500,10 +537,13 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
         bool functionalOverlap = !lexicalMatch && sharedWords >= 10 && wordCoverage >= 0.15 &&
             ((sharedIdentifiers.Length > 0 && sharedTitleWords >= 2 && titleCoverage >= 0.5) ||
              (sharedTitleWords >= 3 && titleCoverage >= 0.75));
-        if (!lexicalMatch && !functionalOverlap)
+        if (!lexicalMatch && !functionalOverlap && !titlesMatch)
             return null;
+        var content = titlesMatch ? ContentVerifier.Assess(source.Page.Content, candidate.Page.Content) : null;
+        bool titleOnly = !lexicalMatch && !functionalOverlap;
 
-        string relationship = functionalOverlap ? "Potential functional overlap" : exact ? "Exact extracted-text duplicate" :
+        string relationship = titleOnly ? (content!.Verdict == ContentVerdict.DifferentContent ? "Same title, different content" : "Same title, content overlap") :
+            functionalOverlap ? "Potential functional overlap" : exact ? "Exact extracted-text duplicate" :
             jaccard >= threshold ? "Possible near duplicate" : "Possible partial overlap";
         string recommendation = functionalOverlap ? "Review shared purpose with the owners" : exact ? "Review as a potential duplicate" :
             sourceCoverage >= 80 && candidateOnly <= 20 ? "Review candidate for substantial overlap" :
@@ -515,18 +555,21 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
         string reason = functionalOverlap ? functionalEvidence : exact
             ? "The case-sensitive, whitespace-normalised extracted texts match. Confirm page purpose and extraction limitations; neither page is designated authoritative."
             : $"{Math.Round(sourceCoverage, 1)}% of source 5-word shingles occur in the candidate; {Math.Round(candidateOnly, 1)}% of candidate shingles are candidate-only. These lexical estimates do not establish factual completeness or authority. Owner IDs and recency are context only.";
-        string evidence = functionalOverlap ? functionalEvidence : exact
+        string evidence = titleOnly ? $"Titles match. {content!.Explanation} {content.Limitation}" : functionalOverlap ? functionalEvidence : exact
             ? "SHA-256 of case-sensitive, whitespace-normalised extracted text matches. Review macro/image limitations; this does not establish authority."
             : $"{common} shared distinct 5-word shingles; {union} distinct shingles across the pair. Source coverage and candidate-only content are lexical estimates, not factual completeness. Human review required.";
         return new DuplicateFinding(source.Page, candidate.Page, source.Path, relationship,
             exact ? 100 : Math.Round(jaccard * 100, 1), exact ? 100 : Math.Round(smallerCoverage * 100, 1), evidence)
         {
-            MatchBasis = functionalOverlap ? "Title/identifier + content-word overlap; human review required" : exact ? "Identical extracted text" : "5-word lexical overlap",
+            MatchBasis = titleOnly ? "Matching title + inner-content verification" : functionalOverlap ? "Title/identifier + content-word overlap; human review required" : exact ? "Identical extracted text" : "5-word lexical overlap",
             TitleCoverage = Math.Round(titleCoverage * 100, 1),
             SourceCoverage = Math.Round(sourceCoverage, 1),
             CandidateOnlyContentPercent = Math.Round(candidateOnly, 1),
-            Recommendation = recommendation,
-            RecommendationReason = reason
+            Recommendation = content?.NextStep ?? recommendation,
+            RecommendationReason = content == null ? reason : content.Explanation + (titleOnly ? string.Empty : " " + reason),
+            TitlesMatch = titlesMatch,
+            TitleOnly = titleOnly,
+            Content = content
         };
     }
 
@@ -541,6 +584,7 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
             var tokens = MyRegex().Matches(normalised.ToLowerInvariant()).Select(x => x.Value).ToArray();
             Words = tokens.Where(x => x.Length >= 3).ToHashSet(StringComparer.Ordinal);
             TitleWords = TitleTerms(page.Title);
+            TitleKey = ContentVerifier.TitleKey(page.Title);
             Shingles = Enumerable.Range(0, Math.Max(0, tokens.Length - 4))
                 .Select(i => string.Join(" ", tokens, i, 5)).ToHashSet(StringComparer.Ordinal);
         }
@@ -550,6 +594,7 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
         public HashSet<string> Shingles { get; }
         public HashSet<string> Words { get; }
         public HashSet<string> TitleWords { get; }
+        public string TitleKey { get; }
 
         [GeneratedRegex(@"[\p{L}\p{N}]+")]
         private static partial Regex MyRegex();

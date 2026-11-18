@@ -21,11 +21,15 @@
                     <TextBlock Text="Environment variable NAME containing the API key (not the secret)" Margin="0,14,0,6" FontWeight="SemiBold" />
                     <TextBox Text="{Binding AiKeyVariable, UpdateSourceTrigger=PropertyChanged}" Padding="8" AutomationProperties.Name="AI key environment variable" MaxLength="100" />
                 </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="{Binding AiKeyStatus}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0" AutomationProperties.Name="AI key status" />
+                    <Button Content="Re-check environment" Command="{Binding RecheckAiKeyCommand}" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                </StackPanel>
                 <WrapPanel Margin="0,10,0,0">
                     <Button Content="Save AI profile" Command="{Binding SaveAiSettingsCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" />
                     <Button Content="Import approved AI configuration" Command="{Binding ImportAiSettingsCommand}" Style="{StaticResource SecondaryButtonStyle}" />
                 </WrapPanel>
-                <TextBlock Text="GitHubCopilot uses Copilot SDK/CLI sign-in ('copilot login') with your user profile, not Microsoft 365 Copilot. OpenAICompatible and Claude use API keys from the named environment variable; chat subscriptions do not provide API access. Models must support structured output."
+                <TextBlock Text="GitHubCopilot authenticates with the COPILOT_GITHUB_TOKEN environment variable when set, otherwise Copilot SDK/CLI sign-in ('copilot login'); it is not Microsoft 365 Copilot. OpenAICompatible (default OPENAI_API_KEY) and Claude (default ANTHROPIC_API_KEY) read the key from the named environment variable; chat subscriptions do not provide API access. Keys are never stored by DocTwin. See docs/ai-setup.md. Models must support structured output."
                            Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,12,0,0" />
             </StackPanel>
          </StackPanel>

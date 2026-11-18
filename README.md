@@ -12,7 +12,10 @@ Open `DocTwin.sln` in Visual Studio and run the `DocTwin` project, or:
 dotnet run --project DocTwin\DocTwin.csproj
 ```
 
-Requires Windows and .NET 10 Desktop runtime (the SDK for building).
+Requires Windows and .NET 10 Desktop runtime. Building requires the .NET 10 SDK:
+`global.json` selects 10.0.404 or a later stable .NET 10 feature band. The
+Windows GitHub Actions workflow restores and builds Release with warnings as
+errors; it does not yet run a persistent test suite or enforce coverage.
 
 ## Connect and compare
 
@@ -85,14 +88,24 @@ user-configured prototype does not establish approval for distribution.
    documents can produce separate findings for multiple older references.
    The report preserves the match basis, title overlap, true lexical score,
    limitations and source hierarchy; no similarity score designates authority.
+   **Content engine:** when two pages share a title (ignoring case, word order,
+   a leading "Copy of" and trailing "(2)"-style counters), a second engine
+   compares the inner content block by block and reports a verdict (Identical,
+   Duplicate, Near-duplicate, Contained, Partial overlap or Different content),
+   content match %, word similarity %, differing numbers/IDs and a suggested next
+   step. Same-title pages with different content are still listed (capped at 500
+   per scan). Every column in the findings grid can be sorted by clicking its
+   header; the arrow shows direction.
 7. **Prepare AI** loads a finding and opens the AI tab without sending anything.
    Alternatively fetch two live pages first. The AI tab identifies the loaded
    pair and explains missing prerequisites. Choose a provider/model and approve
    sharing explicitly using the checkbox above **Analyse selected pair with AI**.
    The consent control stays visible beside the action while provider settings
    scroll. Opening a tab alone does not load or transmit a pair. Loading another
-   pair resets consent. OpenAI-compatible and Claude adapters use the named environment variable;
-   GitHub Copilot uses SDK/CLI user sign-in, separate from IDE/M365 sign-in.
+   pair resets consent. OpenAI-compatible (`OPENAI_API_KEY`) and Claude
+   (`ANTHROPIC_API_KEY`) adapters use the named environment variable; GitHub Copilot
+   uses `COPILOT_GITHUB_TOKEN` when set, otherwise SDK/CLI user sign-in. Keys are
+   never stored by DocTwin; see [AI provider setup](docs/ai-setup.md).
    Provider responses require structured output and checked evidence quotes.
 8. Expand **Record a local human-review decision** for notes about maintained
    sources, legacy projects, owners, approvals or reasons to keep both. Save
@@ -157,9 +170,10 @@ limitations all affect recall. Read coverage and warnings before using a report.
   skips, HTTP 403 access denials, HTTP 404 missing/not-visible pages, and other
   read errors. A size-limit skip does not indicate missing Confluence access.
   Coverage remains incomplete whenever content could not be analysed.
-- Confluence HTTP timeout is 45 seconds; ordinary operations have a three-minute
-  deadline and discovery has a 60-minute deadline. CPU extraction, matching and
-  diff run off the UI thread. Cancellation retains explicitly partial scan
+- Confluence HTTP timeout is 45 seconds and AI HTTP timeout is two minutes;
+  these limits also apply to response-body transfer after headers. Ordinary
+  operations have a three-minute deadline and discovery has a 60-minute deadline.
+  CPU extraction, matching and diff run off the UI thread. Cancellation retains explicitly partial scan
   results; already running CPU work may finish before cancellation. In-memory
   scans are bounded to 15 million retained characters and 10,000 findings.
 - Optional AI accepts at most 160,000 combined page-text/hierarchy characters;
@@ -185,7 +199,10 @@ implicit styles; use `PrimaryButtonStyle`, `QuietButtonStyle` or
 Use `PanelBrush`, `CanvasBrush`, `InkBrush`, `MutedBrush` and `LineBrush` instead
 of hard-coded light colors. **Switch theme** replaces the semantic palette at
 runtime with `LightTheme.xaml` or the dark `EmeraldPalette.xaml`; the preference
-is saved locally. Native Windows title bars and message boxes remain system-managed.
+is saved locally. Primary-action text and its normal, hover and pressed colors
+are checked against a 4.5:1 contrast threshold in both palettes. This check is
+not a full accessibility certification. Native Windows title bars and message
+boxes remain system-managed.
 
 ## Branding
 
@@ -232,6 +249,7 @@ Signing, deployment-policy approval, a longer soak and assistive-technology
 validation remain release gates. Do not treat fast synthetic timings as live
 Confluence throughput guarantees.
 
+- [AI provider setup (environment variables)](docs/ai-setup.md)
 - [Architecture and decisions](docs/architecture.md)
 - [Client contracts, error catalogue and operations](docs/operations-and-contracts.md)
 - [Validation evidence and release gates](docs/enterprise-readiness.md)
