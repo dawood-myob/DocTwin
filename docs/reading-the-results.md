@@ -419,6 +419,18 @@ never shown, exported or logged.
   external pages. Faster, but may miss rewritten or differently titled copies.
 - **Deep**: also walks the full inventory of approved spaces up to your page limits. Slower, broader.
 
+### Scan limits: the numbers to use
+
+The Scan setup panel shows these ranges under the three boxes, and warns live if a value is out of range.
+
+| Setting | Allowed | Default | Notes |
+|---|---|---|---|
+| Source node limit | 1-1,000 | 500 | Pages read under your root. |
+| External page limit | 1-5,000 | 1,000 | Budget for reading pages outside the root. Quick mode reads at most 100 whatever you enter; Deep can use up to 5,000. |
+| Lexical threshold | 0.1-1.0 | 0.5 | Lower finds more, looser matches; higher finds fewer, closer ones. |
+
+A remembered value above the maximum is brought down to it when the app starts.
+
 ## Responsible use
 
 - Results are suggestions, labelled as such, with the evidence shown.
@@ -432,8 +444,8 @@ never shown, exported or logged.
 This document is the source for the planned product documentation in
 Confluence. Reusable pointers:
 
-1. The status vocabulary (`Empty`, `Thin`, `Stale`, `Duplicate group`, `Healthy`) and thresholds (50 words, 18 months).
-2. Severity order: Empty, then Thin and Duplicate group, then Stale, then Healthy.
+1. The status vocabulary (`Sensitive content`, `Empty`, `Thin`, `Stale`, `Duplicate group`, `Healthy`) and thresholds (50 words, 18 months).
+2. Severity order: Sensitive content, then Empty, then Thin and Duplicate group, then Stale, then Healthy.
 3. Two-engine duplicate detection: lexical candidate finder, then inner-content verification for same-title pairs, with the verdict thresholds above.
 4. AI is optional, consent-gated, and validated; its ratings are separate from the rule-based statuses.
 5. Scan, fix, re-scan workflow with the page cache and the **Clear page cache** reset.

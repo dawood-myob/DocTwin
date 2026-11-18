@@ -67,9 +67,24 @@ public partial class ConfluenceViewModel
     partial void OnRootUrlChanged(string value) => ClearScan();
     partial void OnSearchSpaceKeysChanged(string value) => ClearScan();
     partial void OnAllAccessibleSpacesChanged(bool value) { ClearScan(); RememberChoice(); }
-    partial void OnSourceLimitChanged(string value) => ClearScan();
-    partial void OnExternalLimitChanged(string value) => ClearScan();
-    partial void OnLexicalThresholdChanged(string value) => ClearScan();
+    partial void OnSourceLimitChanged(string value) { ClearScan(); OnPropertyChanged(nameof(ScanLimitsWarning)); }
+    partial void OnExternalLimitChanged(string value) { ClearScan(); OnPropertyChanged(nameof(ScanLimitsWarning)); }
+    partial void OnLexicalThresholdChanged(string value) { ClearScan(); OnPropertyChanged(nameof(ScanLimitsWarning)); }
+
+    public const string ScanLimitsNote = "Allowed values: Source node limit 1-1,000 (default 500). External page limit 1-5,000 (default 1,000). Lexical threshold 0.1-1.0 (default 0.5). Quick mode reads at most 100 external bodies whatever you enter; Deep mode can read up to 5,000.";
+
+    // Empty when every value is valid, so the warning line stays hidden.
+    public string ScanLimitsWarning
+    {
+        get
+        {
+            var problems = new List<string>();
+            if (!int.TryParse(SourceLimit, out int source) || source is < 1 or > 1000) problems.Add("Source node limit must be 1-1,000");
+            if (!int.TryParse(ExternalLimit, out int external) || external is < 1 or > 5000) problems.Add("External page limit must be 1-5,000");
+            if (!double.TryParse(LexicalThreshold, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out double threshold) || threshold is < 0.1 or > 1) problems.Add("Lexical threshold must be 0.1-1.0");
+            return problems.Count == 0 ? string.Empty : "Fix before scanning: " + string.Join("; ", problems) + ".";
+        }
+    }
     partial void OnSelectedScanModeChanged(DiscoveryMode value) => ClearScan();
 
     private void ClearScan()

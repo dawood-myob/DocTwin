@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using DocTwin.Persistence;
@@ -8,6 +9,10 @@ public partial class ConfluenceViewModel
 {
     private readonly ScanSettingsStore _scanSettings = new();
     private bool _restoringSettings;
+
+    // A remembered number above the allowed maximum is brought down to it, so an old value can't block the next scan.
+    private static string ClampLimit(string saved, int max) =>
+        int.TryParse(saved, out int value) && value > max ? max.ToString(CultureInfo.InvariantCulture) : saved;
 
     private void ApplyScanSettings(bool restoreAuthorisation)
     {
@@ -24,14 +29,10 @@ public partial class ConfluenceViewModel
             RootUrl = saved.RootUrl;
             SearchSpaceKeys = saved.SearchSpaceKeys;
             AllAccessibleSpaces = saved.AllAccessibleSpaces;
-            SourceLimit = saved.SourceLimit;
-            ExternalLimit = saved.ExternalLimit;
+            SourceLimit = ClampLimit(saved.SourceLimit, 1000);
+            ExternalLimit = ClampLimit(saved.ExternalLimit, 5000);
             LexicalThreshold = saved.LexicalThreshold;
             SelectedScanMode = saved.Mode;
-            AiIncludeThin = saved.AiThin;
-            AiIncludeStale = saved.AiStale;
-            AiIncludeDuplicate = saved.AiDuplicate;
-            AiIncludeHealthy = saved.AiHealthy;
             AiIncludeThin = saved.AiThin;
             AiIncludeStale = saved.AiStale;
             AiIncludeDuplicate = saved.AiDuplicate;

@@ -24,6 +24,16 @@
                 <TextBlock Text="  Lexical threshold (0.1-1): " VerticalAlignment="Center" />
                 <TextBox Text="{Binding LexicalThreshold, UpdateSourceTrigger=PropertyChanged}" Width="65" Padding="6" AutomationProperties.Name="Lexical match threshold" />
             </WrapPanel>
+            <TextBlock Text="{x:Static vm:ConfluenceViewModel.ScanLimitsNote}" Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" />
+            <TextBlock Text="{Binding ScanLimitsWarning}" Foreground="{DynamicResource InkBrush}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ScanLimitsWarning}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
             <TextBlock Text="Scoped tokens additionally need read:hierarchical-content:confluence and read:content-details:confluence for title search; selected-space lookup also needs read:space:confluence. Only pages visible to your account can be scanned. Page limits and failures mean incomplete coverage."
                        Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" />
         </StackPanel></Expander>
