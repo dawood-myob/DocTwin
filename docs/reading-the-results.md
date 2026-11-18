@@ -41,6 +41,7 @@ nested pages). The summary above the grid reads, for example:
 | **Words** | Number of words in the extracted readable text (a word is a run of letters or digits). Images, attachments and some macros contribute no words. |
 | **Last updated** | Confluence's last-updated timestamp for the current version (UTC, ISO format). |
 | **Duplicate group** | `Group N (X pages)` when the page belongs to a group of exact or near-duplicate pages; blank otherwise. Pages with the same group number are copies of each other. |
+| **Possible duplicate pages** (exported HTML and CSV reports) | Under the group label, a list of links to the other pages in the same group, so a reviewer can open them side by side. A page can sit in the group with pages outside your root tree; those are marked "outside the root tree" with their space ID. The list is capped at 20 links with "and N more". It is a suggestion to review, not a decision. |
 | **Advice (suggestion)** | Plain-language next step for a human reviewer. |
 | **Source path** | Where the page sits under your root, so you can find the owner team or area. |
 

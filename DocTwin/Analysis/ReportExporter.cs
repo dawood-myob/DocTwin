@@ -29,9 +29,11 @@ public static class ReportExporter
         {
             output.AppendLine();
             output.AppendLine(Row("Content health (suggestions for human review)"));
-            output.AppendLine(Row("Page", "URL", "Source path", "Status", "Words", "Last updated", "Duplicate group", "Advice"));
+            output.AppendLine(Row("Page", "URL", "Source path", "Status", "Words", "Last updated", "Duplicate group", "Possible duplicate pages (title - URL)", "Advice"));
             foreach (var row in health.Rows)
-                output.AppendLine(Row(row.Title, row.Url.AbsoluteUri, row.Path, row.Status, row.Words.ToString(CultureInfo.InvariantCulture), row.Updated, row.DuplicateGroup, row.Advice));
+                output.AppendLine(Row(row.Title, row.Url.AbsoluteUri, row.Path, row.Status, row.Words.ToString(CultureInfo.InvariantCulture), row.Updated, row.DuplicateGroup,
+                    string.Join(" | ", row.PossibleDuplicates.Take(MaximumListedDuplicates).Select(x => x.Title + " - " + x.Url.AbsoluteUri)) +
+                        (row.PossibleDuplicates.Count > MaximumListedDuplicates ? $" | and {row.PossibleDuplicates.Count - MaximumListedDuplicates} more" : string.Empty), row.Advice));
         }
         if (aiQuality is { Count: > 0 })
         {
@@ -53,7 +55,7 @@ public static class ReportExporter
         {
             output.Append("<h2>Content health</h2><p>").Append(E(health.Summary).Replace("\n", "<br>")).Append("</p><table><thead><tr><th>Page</th><th>Status</th><th>Words</th><th>Last updated</th><th>Duplicate group</th><th>Advice (suggestion)</th></tr></thead><tbody>");
             foreach (var row in health.Rows)
-                output.Append("<tr><td><a href=\"").Append(E(row.Url.AbsoluteUri)).Append("\">").Append(E(row.Title)).Append("</a><p>").Append(E(row.Path)).Append("</p></td><td>").Append(E(row.Status)).Append("</td><td>").Append(row.Words).Append("</td><td>").Append(E(row.Updated)).Append("</td><td>").Append(E(row.DuplicateGroup)).Append("</td><td>").Append(E(row.Advice)).Append("</td></tr>");
+                output.Append("<tr><td><a href=\"").Append(E(row.Url.AbsoluteUri)).Append("\">").Append(E(row.Title)).Append("</a><p>").Append(E(row.Path)).Append("</p></td><td>").Append(E(row.Status)).Append("</td><td>").Append(row.Words).Append("</td><td>").Append(E(row.Updated)).Append("</td><td>").Append(E(row.DuplicateGroup)).Append(DuplicateLinks(row)).Append("</td><td>").Append(E(row.Advice)).Append("</td></tr>");
             output.Append("</tbody></table>");
         }
         if (aiQuality is { Count: > 0 })
@@ -72,6 +74,21 @@ public static class ReportExporter
             output.Append("<tr><td><a href=\"").Append(E(finding.Source.Url.AbsoluteUri)).Append("\">").Append(E(finding.SourceTitle)).Append("</a><p>").Append(E(finding.SourcePath)).Append("</p>Version ").Append(finding.Source.Version).Append("</td><td><a href=\"").Append(E(finding.Candidate.Url.AbsoluteUri)).Append("\">").Append(E(finding.CandidateTitle)).Append("</a><p>Space ID ").Append(E(finding.CandidateSpace)).Append("</p>Version ").Append(finding.Candidate.Version).Append("</td><td>").Append(E(finding.Relationship)).Append("<p><strong>Content verdict (titles match: ").Append(E(finding.TitleMatchText)).Append("):</strong> ").Append(E(finding.ContentVerdict)).Append(finding.Content == null ? string.Empty : $"<br>Content match: {finding.Content.ContentMatchPercent.ToString(CultureInfo.InvariantCulture)}%<br>Word similarity: {finding.Content.WordCosinePercent.ToString(CultureInfo.InvariantCulture)}%<br>Differing numbers/IDs: {E(finding.DifferingFacts)}").Append("</p><p>").Append(E(finding.MatchBasis)).Append("<br>Smaller-title coverage: ").Append(finding.TitleCoverage.ToString(CultureInfo.InvariantCulture)).Append("%<br>Lexical similarity: ").Append(finding.LexicalScore.ToString(CultureInfo.InvariantCulture)).Append("%<br>Smaller-page coverage: ").Append(finding.SmallerPageCoverage.ToString(CultureInfo.InvariantCulture)).Append("%<br>Source covered: ").Append(finding.SourceCoverage.ToString(CultureInfo.InvariantCulture)).Append("%<br>Candidate-only: ").Append(finding.CandidateOnlyContentPercent.ToString(CultureInfo.InvariantCulture)).Append("%</p><strong>").Append(E(finding.Recommendation)).Append("</strong><p>").Append(E(finding.RecommendationReason)).Append("</p></td><td>").Append(E(finding.Evidence)).Append("</td><td>").Append(E(review?.Decision.ToString() ?? "NotReviewed")).Append("<p>").Append(E(review?.Notes ?? "")).Append("</p>").Append(IsCurrent(finding, review) ? "Reviewed versions match scan" : "Unreviewed or versions changed: re-review required").Append("</td></tr>");
         }
         return output.Append("</tbody></table><footer>#Breakthrough Build | Developed by Dawood Ali | Local read-only report. Review owners, approvals, audience, conflicts and original links before deciding.</footer></html>").ToString();
+    }
+
+    private const int MaximumListedDuplicates = 20;
+
+    // Links to the other pages in the same duplicate group; empty for pages that are not in a group.
+    private static string DuplicateLinks(PageHealthRow row)
+    {
+        if (row.PossibleDuplicates.Count == 0) return string.Empty;
+        var html = new StringBuilder("<p><strong>Possible duplicates (suggestion, please review):</strong></p><ul>");
+        foreach (var other in row.PossibleDuplicates.Take(MaximumListedDuplicates))
+            html.Append("<li><a href=\"").Append(WebUtility.HtmlEncode(other.Url.AbsoluteUri)).Append("\">").Append(WebUtility.HtmlEncode(other.Title)).Append("</a>")
+                .Append(other.InSourceTree ? string.Empty : " <small>(outside the root tree, space " + WebUtility.HtmlEncode(other.SpaceId) + ")</small>").Append("</li>");
+        if (row.PossibleDuplicates.Count > MaximumListedDuplicates)
+            html.Append("<li>and ").Append(row.PossibleDuplicates.Count - MaximumListedDuplicates).Append(" more</li>");
+        return html.Append("</ul>").ToString();
     }
 
     private static ReviewRecord? FindReview(DuplicateFinding finding, IReadOnlyList<ReviewRecord> reviews) => reviews.LastOrDefault(x => x.Site == finding.Source.Url.GetLeftPart(UriPartial.Authority) && x.SourceId == finding.Source.Id && x.CandidateId == finding.Candidate.Id);

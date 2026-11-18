@@ -8,9 +8,16 @@ public sealed record PageHealthRow(string Title, Uri Url, string Path, string St
 {
     public string PageId { get; init; } = string.Empty;
     public bool NeedsAttention => Severity > 0;
+    // The other pages in this page's duplicate group, so a reviewer can open them.
+    public IReadOnlyList<RelatedPage> PossibleDuplicates { get; init; } = [];
 }
 
-public sealed record DuplicateGroupSummary(int Number, IReadOnlyList<string> Titles, int Pages, int RedundantWords);
+public sealed record RelatedPage(string Title, Uri Url, string SpaceId, bool InSourceTree);
+
+public sealed record DuplicateGroupSummary(int Number, IReadOnlyList<string> Titles, int Pages, int RedundantWords)
+{
+    public IReadOnlyList<(string Id, RelatedPage Page)> Members { get; init; } = [];
+}
 
 public sealed class ContentHealthReport
 {
@@ -84,16 +91,18 @@ public static class ContentHealthAnalyzer
                 severity = Math.Max(severity, 1);
             }
             string group = string.Empty;
+            IReadOnlyList<RelatedPage> duplicates = [];
             if (groupOf.TryGetValue(page.Id, out int number))
             {
                 var summary = groups[number - 1];
                 group = $"Group {number} ({summary.Pages} pages)";
+                duplicates = summary.Members.Where(x => x.Id != page.Id).Select(x => x.Page).ToArray();
                 issues.Add("Duplicate group");
                 advice.Add("Appears in a group of exact or near-duplicate pages. Confirm the canonical page, ask an owner to reconcile, or review the copies for archiving.");
                 severity = Math.Max(severity, 2);
             }
             rows.Add(new PageHealthRow(page.Title, page.Url, discovered.Path, issues.Count == 0 ? "Healthy" : string.Join(" + ", issues), words, page.Updated, group,
-                issues.Count == 0 ? "No issues detected by the automated checks. This is not a quality guarantee." : string.Join(" ", advice), severity) { PageId = page.Id });
+                issues.Count == 0 ? "No issues detected by the automated checks. This is not a quality guarantee." : string.Join(" ", advice), severity) { PageId = page.Id, PossibleDuplicates = duplicates });
         }
 
         int redundantPages = groups.Sum(x => x.Pages - 1);
@@ -164,13 +173,18 @@ public static class ContentHealthAnalyzer
         }
 
         groups = [];
+        var sourceIds = results.SourcePages.Select(x => x.Page.Id).ToHashSet(StringComparer.Ordinal);
         var map = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var members in parent.Keys.GroupBy(Find).Where(x => x.Count() > 1).OrderByDescending(x => x.Count()).ThenBy(x => x.Key, StringComparer.Ordinal))
         {
             var group = members.Select(id => pages[id]).ToArray();
             var words = group.Select(x => CountWords(x.Content)).ToArray();
             int number = groups.Count + 1;
-            groups.Add(new DuplicateGroupSummary(number, group.Select(x => x.Title).ToArray(), group.Length, words.Sum() - words.Max()));
+            groups.Add(new DuplicateGroupSummary(number, group.Select(x => x.Title).ToArray(), group.Length, words.Sum() - words.Max())
+            {
+                Members = group.OrderBy(x => x.Title, StringComparer.OrdinalIgnoreCase)
+                    .Select(x => (x.Id, new RelatedPage(x.Title, x.Url, x.SpaceId, sourceIds.Contains(x.Id)))).ToArray()
+            });
             foreach (var page in group)
                 map[page.Id] = number;
         }
