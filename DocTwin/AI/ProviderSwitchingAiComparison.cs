@@ -9,7 +9,7 @@ using GitHub.Copilot;
 
 namespace DocTwin.AI;
 
-public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiComparisonProvider
+public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiComparisonProvider, IAiQualityAdvisor
 {
     public async Task<AiComparisonResult> CompareAsync(AiComparisonRequest request, CancellationToken cancellationToken)
     {
@@ -19,15 +19,34 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
             request.SourceRootId, request.SourceRootTitle, request.SourcePath);
         string json = request.Provider switch
         {
-            AiProvider.OpenAICompatible => await CompleteHttpAsync(request, input, false, cancellationToken),
-            AiProvider.Claude => await CompleteHttpAsync(request, input, true, cancellationToken),
-            AiProvider.GitHubCopilot => await CompleteCopilotAsync(request, input, cancellationToken),
+            AiProvider.OpenAICompatible => await CompleteHttpAsync(request.Connection, input, false, Comparison, cancellationToken),
+            AiProvider.Claude => await CompleteHttpAsync(request.Connection, input, true, Comparison, cancellationToken),
+            AiProvider.GitHubCopilot => await CompleteCopilotAsync(request.Connection, input, Comparison, cancellationToken),
             _ => throw new InvalidDataException("Unsupported AI provider.")
         };
         return AiComparisonContract.Parse(json, request.Source, request.Candidate);
     }
 
-    private async Task<string> CompleteHttpAsync(AiComparisonRequest request, string input, bool claude,
+    private sealed record AiCall(string SystemPrompt, JsonElement Schema, string SchemaName);
+    private static AiCall Comparison => new(AiComparisonContract.SystemPrompt, AiComparisonContract.Schema, "doctwin_comparison");
+    private static AiCall Quality => new(AiQualityContract.SystemPrompt, AiQualityContract.Schema, AiQualityContract.SchemaName);
+
+    public async Task<AiQualityResult> AssessAsync(AiQualityRequest request, CancellationToken cancellationToken)
+    {
+        var connection = request.Connection;
+        AiSettingsStore.Validate(new AiProfile(connection.Provider, connection.Model, connection.Endpoint.OriginalString, connection.ApiKeyEnvironmentVariable));
+        string input = AiQualityContract.BuildInput(request.Page, request.Path);
+        string json = connection.Provider switch
+        {
+            AiProvider.OpenAICompatible => await CompleteHttpAsync(connection, input, false, Quality, cancellationToken),
+            AiProvider.Claude => await CompleteHttpAsync(connection, input, true, Quality, cancellationToken),
+            AiProvider.GitHubCopilot => await CompleteCopilotAsync(connection, input, Quality, cancellationToken),
+            _ => throw new InvalidDataException("Unsupported AI provider.")
+        };
+        return AiQualityContract.Parse(json, request.Page);
+    }
+
+    private async Task<string> CompleteHttpAsync(AiConnection request, string input, bool claude, AiCall call,
         CancellationToken cancellationToken)
     {
         var endpoint = request.Endpoint;
@@ -51,9 +70,9 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
             {
                 model = request.Model,
                 max_tokens = 8192,
-                system = AiComparisonContract.SystemPrompt,
+                system = call.SystemPrompt,
                 messages = new[] { new { role = "user", content = input } },
-                output_config = new { format = new { type = "json_schema", schema = AiComparisonContract.Schema } }
+                output_config = new { format = new { type = "json_schema", schema = call.Schema } }
             });
         }
         else
@@ -63,10 +82,10 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
             {
                 model = request.Model,
                 max_completion_tokens = 8192,
-                response_format = new { type = "json_schema", json_schema = new { name = "doctwin_comparison", strict = true, schema = AiComparisonContract.Schema } },
+                response_format = new { type = "json_schema", json_schema = new { name = call.SchemaName, strict = true, schema = call.Schema } },
                 messages = new[]
                 {
-                    new { role = "system", content = AiComparisonContract.SystemPrompt },
+                    new { role = "system", content = call.SystemPrompt },
                     new { role = "user", content = input }
                 }
             });
@@ -123,7 +142,7 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
         return content.GetString()!;
     }
 
-    private static async Task<string> CompleteCopilotAsync(AiComparisonRequest request, string input,
+    private static async Task<string> CompleteCopilotAsync(AiConnection request, string input, AiCall call,
         CancellationToken cancellationToken)
     {
         var environment = Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>()
@@ -154,7 +173,7 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
             {
                 Model = request.Model,
                 AvailableTools = [],
-                SystemMessage = new SystemMessageConfig { Mode = SystemMessageMode.Replace, Content = AiComparisonContract.SystemPrompt },
+                SystemMessage = new SystemMessageConfig { Mode = SystemMessageMode.Replace, Content = call.SystemPrompt },
                 EnableSessionStore = false,
                 EnableSessionTelemetry = false,
                 InfiniteSessions = new InfiniteSessionConfig { Enabled = false },
@@ -166,7 +185,7 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
                 var result = await session.SendAndWaitAsync(new MessageOptions
                 {
                     Prompt = input,
-                    ResponseSchema = AiComparisonContract.Schema
+                    ResponseSchema = call.Schema
                 }, TimeSpan.FromMinutes(2), cancellationToken);
 #pragma warning restore GHCP001
                 return !string.IsNullOrWhiteSpace(result?.Data.Content) ? result.Data.Content :

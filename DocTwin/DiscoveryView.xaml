@@ -112,6 +112,42 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>
+            <TabItem Header="AI quality advice">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel IsEnabled="{Binding IsIdle}" Margin="8">
+                        <TextBlock Text="Optional. Uses the provider, model and key settings on the AI tab (keys come from environment variables). Nothing is sent until you approve." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Text="{Binding AiQualityPlanText}" TextWrapping="Wrap" Margin="0,6,0,6" Foreground="{DynamicResource InkBrush}" AutomationProperties.Name="AI quality review plan" />
+                        <CheckBox IsChecked="{Binding AiQualityConsent}" AutomationProperties.Name="Approve sharing the planned pages with AI" Margin="0,0,0,6">
+                            <TextBlock Text="My organisation approves sending the text, titles, last-updated dates and hierarchy paths of EXACTLY the pages in the plan above to this provider, endpoint and model, one request per page. I understand the provider's data policies and possible charges. Requests are not retried automatically." TextWrapping="Wrap" />
+                        </CheckBox>
+                        <TextBlock Text="{Binding AiQualityReadiness}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,6" />
+                        <Button Content="Run AI quality review" Command="{Binding RunAiQualityReviewCommand}" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Left" />
+                        <TextBlock Text="{Binding AiQualitySummary}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource InkBrush}" AutomationProperties.Name="AI quality review summary" />
+                    </StackPanel>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding AiQualityRows}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserSortColumns="True" SelectionMode="Single" AutomationProperties.Name="AI page quality advice">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Page" SortMemberPath="Title" Width="240">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock TextWrapping="Wrap"><Hyperlink NavigateUri="{Binding Url}" RequestNavigate="PageLink_RequestNavigate" Foreground="{DynamicResource TealHoverBrush}"><Run Text="{Binding Title, Mode=OneWay}" /></Hyperlink></TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="AI rating" Binding="{Binding Rating}" SortMemberPath="RatingRank" Width="130" />
+                            <DataGridTextColumn Header="Suggested human review" Binding="{Binding SuggestedAction}" SortMemberPath="SuggestedAction" Width="170" />
+                            <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" SortMemberPath="Summary" Width="380" />
+                            <DataGridTextColumn Header="Issues and suggestions" Binding="{Binding Issues}" SortMemberPath="Issues" Width="520" />
+                            <DataGridTextColumn Header="Uncertainties" Binding="{Binding Uncertainties}" SortMemberPath="Uncertainties" Width="240" />
+                            <DataGridTextColumn Header="Not accepted because" Binding="{Binding Error}" SortMemberPath="Error" Width="320" />
+                            <DataGridTextColumn Header="Source path" Binding="{Binding Path}" SortMemberPath="Path" Width="240" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
             <TabItem Header="Source hierarchy">
                 <Grid>
                     <Grid.ColumnDefinitions>

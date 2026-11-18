@@ -26,11 +26,14 @@ public partial class ConfluenceViewModel : ObservableObject
     private CancellationTokenSource? _operation;
     private readonly DuplicateDiscovery _discovery;
     private readonly DocTwin.AI.IAiComparisonProvider _ai;
+    private readonly DocTwin.AI.IAiQualityAdvisor? _qualityAdvisor;
 
     public ConfluenceViewModel(IConfluenceClient client, ICredentialStore credentials, PageComparison comparison,
-        DuplicateDiscovery discovery, DocTwin.AI.IAiComparisonProvider ai, ReviewStore? reviewStore = null)
+        DuplicateDiscovery discovery, DocTwin.AI.IAiComparisonProvider ai, ReviewStore? reviewStore = null,
+        DocTwin.AI.IAiQualityAdvisor? qualityAdvisor = null)
     {
         _reviewStore = reviewStore ?? new ReviewStore();
+        _qualityAdvisor = qualityAdvisor ?? ai as DocTwin.AI.IAiQualityAdvisor;
         _client = client;
         _credentials = credentials;
         _comparison = comparison;
@@ -63,6 +66,8 @@ public partial class ConfluenceViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(PrepareAiPairCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveReviewCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExportReportCommand))]
+    [NotifyPropertyChangedFor(nameof(AiQualityReadiness))]
+    [NotifyCanExecuteChangedFor(nameof(RunAiQualityReviewCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveAiSettingsCommand))]
     [NotifyCanExecuteChangedFor(nameof(ImportAiSettingsCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelCommand))]

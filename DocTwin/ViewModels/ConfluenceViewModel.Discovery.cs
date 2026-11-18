@@ -79,6 +79,12 @@ public partial class ConfluenceViewModel
         SourceTree.Clear();
         HealthRows.Clear();
         _health = null;
+        AiQualityRows.Clear();
+        _scanSourcePages = [];
+        _aiQualityPlan = new AiQualityPlan();
+        AiQualityConsent = false;
+        AiQualitySummary = "No AI quality review yet. Run discovery, check the plan, approve sharing and start the review.";
+        RefreshAiQuality();
         ContentHealthSummary = "No content health analysis yet. Run discovery on a root page.";
         SourceTreeDetails = "Select a node to inspect its context and extracted key-text preview.";
         SelectedFinding = null;
@@ -89,6 +95,7 @@ public partial class ConfluenceViewModel
     partial void OnSelectedAiProviderChanged(AiProvider value)
     {
         AiConsent = false;
+        ResetAiQualityConsent();
         AiOutput = "AI provider changed. Review the endpoint, model, credential source and data-sharing consent before requesting analysis.";
         AiModel = value switch { AiProvider.Claude => "claude-sonnet-4-6", _ => "gpt-4.1" };
         AiEndpoint = value == AiProvider.Claude ? "https://api.anthropic.com/v1/messages" : "https://api.openai.com/v1/chat/completions";
@@ -97,9 +104,9 @@ public partial class ConfluenceViewModel
         OnPropertyChanged(nameof(UsesApiKey));
         OnPropertyChanged(nameof(AiKeyStatus));
     }
-    partial void OnAiEndpointChanged(string value) { AiConsent = false; AiOutput = "AI endpoint changed. Review the destination and approve data sharing again."; }
-    partial void OnAiModelChanged(string value) { AiConsent = false; AiOutput = "AI model changed. Request a new analysis for this model."; }
-    partial void OnAiKeyVariableChanged(string value) { AiConsent = false; OnPropertyChanged(nameof(AiKeyStatus)); }
+    partial void OnAiEndpointChanged(string value) { AiConsent = false; ResetAiQualityConsent(); AiOutput = "AI endpoint changed. Review the destination and approve data sharing again."; }
+    partial void OnAiModelChanged(string value) { AiConsent = false; ResetAiQualityConsent(); AiOutput = "AI model changed. Request a new analysis for this model."; }
+    partial void OnAiKeyVariableChanged(string value) { AiConsent = false; ResetAiQualityConsent(); OnPropertyChanged(nameof(AiKeyStatus)); }
 
     [RelayCommand(CanExecute = nameof(CanStart))]
     private async Task ScanAsync()
@@ -167,6 +174,7 @@ public partial class ConfluenceViewModel
                 foreach (var row in _health.Rows)
                     HealthRows.Add(row);
                 ContentHealthSummary = _health.Summary;
+                PrepareAiQualityPlan(results);
                 ExportReportCommand.NotifyCanExecuteChanged();
             }
         }, "Starting root-tree and cross-space duplicate discovery...", 60);

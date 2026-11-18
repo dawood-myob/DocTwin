@@ -103,8 +103,17 @@ user-configured prototype does not establish approval for distribution.
    group* (pages linked by exact or near-duplicate findings, with an estimate of
    redundant words if one page per group were kept). The rules are simple and
    transparent; they are prompts for an owner to review, not quality verdicts.
-   AI-written quality advice across the whole tree is not part of this build;
-   optional AI remains pairwise and consent-based.
+   **AI quality advice (whole tree):** the *AI quality advice* tab reviews the
+   scanned pages for clarity, completeness, structure, actionability, possible
+   staleness and redundancy. After a scan it shows a plan (page count, characters,
+   provider, model and any pages that will not be sent). Tick the single consent
+   box and choose **Run AI quality review**; one request is made per page (at most
+   50 pages and 600,000 characters, flagged pages first, nothing truncated) and the
+   run stops after 3 failed requests in a row. Each rating comes with exact quotes
+   checked against the page, a suggestion and a suggested next step (never delete).
+   Only page text, title, hierarchy path, update date and version are sent - no
+   tokens or owner IDs. Consent is withdrawn if the scan or AI settings change.
+   Results are advisory and appear in the exported report.
 7. **Prepare AI** loads a finding and opens the AI tab without sending anything.
    Alternatively fetch two live pages first. The AI tab identifies the loaded
    pair and explains missing prerequisites. Choose a provider/model and approve

@@ -126,6 +126,25 @@ incomplete responses and unsupported evidence are rejected.
 - Evidence-backed classifications do not determine canonical ownership, approval,
   factual correctness or permission to retire a page.
 
+### Tree-wide quality contract
+
+The *AI quality advice* tab uses a second contract (`IAiQualityAdvisor`) over the
+same providers. A single consent covers a displayed plan of one request per page
+(<= 50 pages, <= 600,000 characters in total, <= 40,000 per page, no truncation;
+skipped pages are listed with a reason). Sent per page: id, title, hierarchy path,
+last-updated date, version, text and extraction limitations; owner identifiers and
+credentials are not sent. Consent is withdrawn when the scan, provider, model,
+endpoint or key variable changes. Requests run sequentially, are not retried, and
+the run stops after 3 consecutive rejected responses; one rejected page does not
+discard other results.
+
+Result fields (all required): `rating` (Good, NeedsRefinement, Poor, Uncertain),
+`summary`, `issues` (category, quote, explanation, suggestion), `suggestedAction`
+(NoAction, ImproveContent, OwnerReview, ReviewForArchiving, Uncertain) and
+`uncertainties`. Quotes must be exact excerpts of that page (empty only for a
+Completeness gap); Poor/NeedsRefinement need at least one issue; unknown members
+and values are rejected. The tree roll-up is computed locally, not by AI.
+
 ## Local storage and export contract
 
 `%LOCALAPPDATA%\DocTwin` contains `ai-profiles.json`, `appearance.json`,

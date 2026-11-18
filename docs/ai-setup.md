@@ -41,6 +41,15 @@ after the app started is usually found. If the AI tab still reports it missing, 
    *name*, never the key. An older saved OpenAI profile that names `DOCTWIN_OPENAI_API_KEY` keeps
    using that name until you change it to `OPENAI_API_KEY` and save again.
 
+## Whole-tree quality review
+
+The **AI quality advice** tab uses the same provider, model, endpoint and key variable as the AI tab.
+After a scan it shows what would be sent. One consent covers exactly that plan: one request per page,
+at most 50 pages and 600,000 characters, flagged pages first, nothing truncated, stopping after 3
+rejected requests in a row. Changing the scan or any AI setting withdraws consent. Each page is sent
+as text, title, hierarchy path, update date and version only (no owner IDs or tokens), and every quote
+in the answer must appear exactly in that page or the answer is rejected. Results are suggestions.
+
 ## Safety notes
 
 - Each request still needs explicit, per-pair consent; opening the tab sends nothing.

@@ -9,7 +9,10 @@ public enum AiProvider { OpenAICompatible, Claude, GitHubCopilot }
 
 public sealed record AiComparisonRequest(AiProvider Provider, string Model, Uri Endpoint,
     string ApiKeyEnvironmentVariable, ConfluencePage Source, ConfluencePage Candidate,
-    string? SourceRootId = null, string? SourceRootTitle = null, string? SourcePath = null);
+    string? SourceRootId = null, string? SourceRootTitle = null, string? SourcePath = null)
+{
+    public AiConnection Connection => new(Provider, Model, Endpoint, ApiKeyEnvironmentVariable);
+}
 
 public interface IAiComparisonProvider
 {

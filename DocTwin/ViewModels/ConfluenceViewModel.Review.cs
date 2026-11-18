@@ -70,7 +70,7 @@ public partial class ConfluenceViewModel
         }
     }
 
-    private bool CanExport() => !IsBusy && (Findings.Count > 0 || HealthRows.Count > 0);
+    private bool CanExport() => !IsBusy && (Findings.Count > 0 || HealthRows.Count > 0 || AiQualityRows.Count > 0);
 
     [RelayCommand(CanExecute = nameof(CanExport))]
     private void ExportReport()
@@ -86,8 +86,9 @@ public partial class ConfluenceViewModel
         try
         {
             var findings = Findings.ToArray();
-            string report = dialog.FilterIndex == 2 ? ReportExporter.Csv(findings, ScanCoverage, ScanWarnings, ReviewHistory.ToArray(), _health) :
-                ReportExporter.Html(findings, ScanCoverage, ScanWarnings, ReviewHistory.ToArray(), _health);
+            var aiQuality = AiQualityRows.ToArray();
+            string report = dialog.FilterIndex == 2 ? ReportExporter.Csv(findings, ScanCoverage, ScanWarnings, ReviewHistory.ToArray(), _health, aiQuality) :
+                ReportExporter.Html(findings, ScanCoverage, ScanWarnings, ReviewHistory.ToArray(), _health, aiQuality);
             File.WriteAllText(dialog.FileName, report, new UTF8Encoding(encoderShouldEmitUTF8Identifier: dialog.FilterIndex == 2));
             Status = "Review report exported locally. Protect the file as internal information; no Confluence content was changed.";
         }

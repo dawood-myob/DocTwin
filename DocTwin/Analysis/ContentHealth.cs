@@ -6,6 +6,7 @@ namespace DocTwin.Analysis;
 public sealed record PageHealthRow(string Title, Uri Url, string Path, string Status, int Words, string Updated,
     string DuplicateGroup, string Advice, int Severity)
 {
+    public string PageId { get; init; } = string.Empty;
     public bool NeedsAttention => Severity > 0;
 }
 
@@ -51,7 +52,7 @@ public static class ContentHealthAnalyzer
             rows.Add(new PageHealthRow(empty.Page.Title, empty.Page.Url, empty.Path, "Empty", 0, empty.Page.Updated, string.Empty,
                 container
                     ? "No readable text but it has child pages, so it may be an index/container page. Confirm that is intended; otherwise add a short overview."
-                    : "No readable text. Ask the owner whether it is a placeholder or holds content only in attachments or macros; review it for removal or completion.", 3));
+                    : "No readable text. Ask the owner whether it is a placeholder or holds content only in attachments or macros; review it for removal or completion.", 3) { PageId = empty.Page.Id });
         }
 
         foreach (var discovered in results.SourcePages)
@@ -83,7 +84,7 @@ public static class ContentHealthAnalyzer
                 severity = Math.Max(severity, 2);
             }
             rows.Add(new PageHealthRow(page.Title, page.Url, discovered.Path, issues.Count == 0 ? "Healthy" : string.Join(" + ", issues), words, page.Updated, group,
-                issues.Count == 0 ? "No issues detected by the automated checks. This is not a quality guarantee." : string.Join(" ", advice), severity));
+                issues.Count == 0 ? "No issues detected by the automated checks. This is not a quality guarantee." : string.Join(" ", advice), severity) { PageId = page.Id });
         }
 
         int redundantPages = groups.Sum(x => x.Pages - 1);
