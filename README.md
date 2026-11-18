@@ -301,7 +301,8 @@ page versions and at most 4,000 note characters; refresh pages if needed.
   sensitive-content guardrail (flagged pages are never sent to AI). Site IDs
   and tokens are masked in the recording.
 - [`docs/demo/DocTwin-Breakthrough-Build.pptx`](docs/demo/DocTwin-Breakthrough-Build.pptx):
-  a five-slide story deck (waste, AI and data quality, Lean 5S, DocTwin).
+  a seven-slide story deck with speaker notes (cover, problem, AI and data
+  quality, Lean 5S, habit and policy, DocTwin).
 - Screenshots: `docs/demo/app-*.png`.
 - Confluence write-up:
   <https://myobconfluence.atlassian.net/wiki/spaces/MSS/pages/12542312452>
