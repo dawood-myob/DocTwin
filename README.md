@@ -295,6 +295,7 @@ validation remain release gates. Do not treat fast synthetic timings as live
 Confluence throughput guarantees.
 
 - [AI provider setup (environment variables)](docs/ai-setup.md)
+- [Reading the results: every tab, column and status](docs/reading-the-results.md)
 - [Architecture and decisions](docs/architecture.md)
 - [Client contracts, error catalogue and operations](docs/operations-and-contracts.md)
 - [Validation evidence and release gates](docs/enterprise-readiness.md)
