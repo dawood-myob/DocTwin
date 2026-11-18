@@ -25,20 +25,52 @@ public partial class ConfluenceViewModel
 
     public string AiQualityReadiness => IsBusy ? "An operation is running. Wait for it to finish or choose Cancel."
         : _qualityAdvisor == null ? "AI quality review is not available in this build."
-        : _aiQualityPlan.Pages.Count == 0 ? "Run discovery first; there are no pages to review yet."
+        : _aiQualityPlan.Pages.Count == 0 ? (_scanSourcePages.Count == 0 ? "Run discovery first; there are no pages to review yet." : "Tick at least one matching page type above; there are no pages to review in the current selection.")
         : !AiQualityConsent ? "Review the plan above, check the provider on the AI tab, then approve sharing to enable the review."
         : "Sharing approved for exactly the pages in the plan. Choose Run AI quality review.";
 
     private void PrepareAiQualityPlan(DiscoveryResults results)
     {
         _scanSourcePages = results.SourcePages.ToArray();
-        _aiQualityPlan = AiQualityPlan.Create(_scanSourcePages, _health);
+        RebuildAiQualityPlan();
+    }
+
+    // Statuses the user wants reviewed; a page qualifies if any of its content-health statuses is ticked.
+    [ObservableProperty] private bool _aiIncludeThin = true;
+    [ObservableProperty] private bool _aiIncludeStale = true;
+    [ObservableProperty] private bool _aiIncludeDuplicate = true;
+    [ObservableProperty] private bool _aiIncludeHealthy = true;
+
+    public string AiThinLabel => $"Thin ({_health?.ThinPages ?? 0})";
+    public string AiStaleLabel => $"Stale ({_health?.StalePages ?? 0})";
+    public string AiDuplicateLabel => $"In a duplicate group ({_health?.DuplicatePages ?? 0})";
+    public string AiHealthyLabel => $"Healthy ({_health?.HealthyPages ?? 0})";
+
+    partial void OnAiIncludeThinChanged(bool value) => ScopeChanged();
+    partial void OnAiIncludeStaleChanged(bool value) => ScopeChanged();
+    partial void OnAiIncludeDuplicateChanged(bool value) => ScopeChanged();
+    partial void OnAiIncludeHealthyChanged(bool value) => ScopeChanged();
+
+    private void ScopeChanged()
+    {
+        RebuildAiQualityPlan();
+        RememberChoice();
+    }
+
+    private void RebuildAiQualityPlan()
+    {
+        _aiQualityPlan = AiQualityPlan.Create(_scanSourcePages, _health,
+            scope: new AiQualityScope(AiIncludeThin, AiIncludeStale, AiIncludeDuplicate, AiIncludeHealthy));
         AiQualityConsent = false;
         RefreshAiQuality();
     }
 
     private void RefreshAiQuality()
     {
+        OnPropertyChanged(nameof(AiThinLabel));
+        OnPropertyChanged(nameof(AiStaleLabel));
+        OnPropertyChanged(nameof(AiDuplicateLabel));
+        OnPropertyChanged(nameof(AiHealthyLabel));
         OnPropertyChanged(nameof(AiQualityPlanText));
         OnPropertyChanged(nameof(AiQualityReadiness));
         RunAiQualityReviewCommand.NotifyCanExecuteChanged();

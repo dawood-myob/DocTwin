@@ -299,6 +299,26 @@ provider. One row per assessed page. Output must pass strict validation: every
 issue needs a verbatim quote from the page, so unsupported answers are rejected
 rather than shown as advice.
 
+### Which pages are sent for review
+
+Pages are selected from the source tree after a scan, in this order:
+
+1. **You choose the page types.** Tick any of **Thin**, **Stale**, **In a duplicate
+   group** and **Healthy** (each shows its page count). A page is included if *any*
+   of its Content health statuses is ticked, so `Thin + Stale` is included if either
+   box is ticked. All four are ticked by default, and your choice is remembered.
+2. **Most serious first.** Within your selection, pages are ordered by Content health
+   severity, then by title.
+3. **Hard limits.** At most 50 pages, 600,000 characters in total and 40,000
+   characters per page. Nothing is truncated: a page that does not fit is listed in
+   the plan as *not sent* with the reason.
+4. **No text, no send.** Empty pages, and pages with no extractable text, are never
+   sent.
+
+The plan text shows the provider, model, page count and every exclusion before you
+approve. Changing the selection, model or provider withdraws your consent, so you
+always approve exactly what will be sent. Each page is one request, and the review
+stops early after three consecutive failures.
 | Column | Meaning |
 |---|---|
 | **AI rating** | `Good`: clear and usable. `NeedsRefinement`: useful but has gaps. `Poor`: hard to use as written. `Uncertain`: not enough text to judge. |

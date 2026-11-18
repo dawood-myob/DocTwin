@@ -28,6 +28,14 @@ public partial class ConfluenceViewModel
             ExternalLimit = saved.ExternalLimit;
             LexicalThreshold = saved.LexicalThreshold;
             SelectedScanMode = saved.Mode;
+            AiIncludeThin = saved.AiThin;
+            AiIncludeStale = saved.AiStale;
+            AiIncludeDuplicate = saved.AiDuplicate;
+            AiIncludeHealthy = saved.AiHealthy;
+            AiIncludeThin = saved.AiThin;
+            AiIncludeStale = saved.AiStale;
+            AiIncludeDuplicate = saved.AiDuplicate;
+            AiIncludeHealthy = saved.AiHealthy;
             // The tick boxes are only restored alongside a saved credential, which was itself saved after the user confirmed them.
             if (restoreAuthorisation) { Authorised = saved.Authorised; SaveConsent = saved.SaveConsent; }
         }
@@ -48,7 +56,8 @@ public partial class ConfluenceViewModel
         try
         {
             _scanSettings.Save(new ScanSettings(RootUrl.Trim(), SearchSpaceKeys.Trim(), AllAccessibleSpaces, SourceLimit.Trim(),
-                ExternalLimit.Trim(), LexicalThreshold.Trim(), SelectedScanMode, Authorised, SaveConsent));
+                ExternalLimit.Trim(), LexicalThreshold.Trim(), SelectedScanMode, Authorised, SaveConsent,
+                AiIncludeThin, AiIncludeStale, AiIncludeDuplicate, AiIncludeHealthy));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {

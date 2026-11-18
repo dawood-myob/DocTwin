@@ -110,7 +110,9 @@ user-configured prototype does not establish approval for distribution.
    **AI quality advice (whole tree):** the *AI quality advice* tab reviews the
    scanned pages for clarity, completeness, structure, actionability, possible
    staleness and redundancy. After a scan it shows a plan (page count, characters,
-   provider, model and any pages that will not be sent). Tick the single consent
+   provider, model and any pages that will not be sent). Tick the page types to
+   review (Thin, Stale, In a duplicate group, Healthy; all ticked by default and
+   remembered), then tick the single consent
    box and choose **Run AI quality review**; one request is made per page (at most
    50 pages and 600,000 characters, flagged pages first, nothing truncated) and the
    run stops after 3 failed requests in a row. Each rating comes with exact quotes

@@ -123,6 +123,13 @@
                     </Grid.RowDefinitions>
                     <StackPanel IsEnabled="{Binding IsIdle}" Margin="8">
                         <TextBlock Text="Optional. Uses the provider, model and key settings on the AI tab (keys come from environment variables). Nothing is sent until you approve." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Text="Choose which pages the AI reviews by their content-health status. A page is included if any of its statuses is ticked (for example Thin + Stale). Empty pages have no text and are never sent. The most serious pages go first, up to 50 pages per review." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,4" />
+                        <WrapPanel AutomationProperties.Name="Choose page types for AI review">
+                            <CheckBox IsChecked="{Binding AiIncludeThin}" Content="{Binding AiThinLabel}" Margin="0,0,16,0" />
+                            <CheckBox IsChecked="{Binding AiIncludeStale}" Content="{Binding AiStaleLabel}" Margin="0,0,16,0" />
+                            <CheckBox IsChecked="{Binding AiIncludeDuplicate}" Content="{Binding AiDuplicateLabel}" Margin="0,0,16,0" />
+                            <CheckBox IsChecked="{Binding AiIncludeHealthy}" Content="{Binding AiHealthyLabel}" Margin="0,0,16,0" />
+                        </WrapPanel>
                         <TextBlock Text="{Binding AiQualityPlanText}" TextWrapping="Wrap" Margin="0,6,0,6" Foreground="{DynamicResource InkBrush}" AutomationProperties.Name="AI quality review plan" />
                         <CheckBox IsChecked="{Binding AiQualityConsent}" AutomationProperties.Name="Approve sharing the planned pages with AI" Margin="0,0,0,6">
                             <TextBlock Text="My organisation approves sending the text, titles, last-updated dates and hierarchy paths of EXACTLY the pages in the plan above to this provider, endpoint and model, one request per page. I understand the provider's data policies and possible charges. Requests are not retried automatically." TextWrapping="Wrap" />

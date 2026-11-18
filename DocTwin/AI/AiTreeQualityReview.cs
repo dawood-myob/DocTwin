@@ -8,6 +8,17 @@ public sealed record PlannedPage(ConfluencePage Page, string Path, int Priority)
 
 public sealed record SkippedPage(string Title, string Reason);
 
+/// <summary>Which content-health statuses the user wants reviewed. A page qualifies if any of its statuses is ticked.</summary>
+public sealed record AiQualityScope(bool Thin = true, bool Stale = true, bool Duplicate = true, bool Healthy = true)
+{
+    public bool IsEmpty => !Thin && !Stale && !Duplicate && !Healthy;
+
+    public bool Includes(string? status) => status == null || status == "Healthy" ? Healthy :
+        (Thin && status.Contains("Thin", StringComparison.Ordinal)) ||
+        (Stale && status.Contains("Stale", StringComparison.Ordinal)) ||
+        (Duplicate && status.Contains("Duplicate group", StringComparison.Ordinal));
+}
+
 /// <summary>What would be sent if the user consents: shown in full before any content leaves the machine.</summary>
 public sealed class AiQualityPlan
 {
@@ -16,20 +27,30 @@ public sealed class AiQualityPlan
 
     public IReadOnlyList<PlannedPage> Pages { get; init; } = [];
     public IReadOnlyList<SkippedPage> Skipped { get; init; } = [];
+    public int ExcludedByScope { get; init; }
+    public bool ScopeEmpty { get; init; }
     public int TotalCharacters => Pages.Sum(x => x.Page.Content.Length);
 
     public static AiQualityPlan Create(IReadOnlyList<DiscoveredPage> pages, ContentHealthReport? health,
-        int maxPages = DefaultMaxPages, int maxTotalCharacters = DefaultMaxTotalCharacters)
+        int maxPages = DefaultMaxPages, int maxTotalCharacters = DefaultMaxTotalCharacters, AiQualityScope? scope = null)
     {
-        var severity = health?.Rows.Where(x => x.PageId.Length > 0).ToDictionary(x => x.PageId, x => x.Severity, StringComparer.Ordinal)
-            ?? new Dictionary<string, int>();
+        scope ??= new AiQualityScope();
+        var rows = health?.Rows.Where(x => x.PageId.Length > 0).ToDictionary(x => x.PageId, StringComparer.Ordinal)
+            ?? new Dictionary<string, PageHealthRow>();
+        var severity = rows.ToDictionary(x => x.Key, x => x.Value.Severity, StringComparer.Ordinal);
         var planned = new List<PlannedPage>();
         var skipped = new List<SkippedPage>();
         long total = 0;
+        int excluded = 0;
         // Pages with automated flags first; they are the likeliest to benefit from review.
         foreach (var item in pages.OrderByDescending(x => severity.GetValueOrDefault(x.Page.Id)).ThenBy(x => x.Page.Title, StringComparer.OrdinalIgnoreCase))
         {
             var page = item.Page;
+            if (!scope.Includes(rows.TryGetValue(page.Id, out var row) ? row.Status : null))
+            {
+                excluded++;
+                continue;
+            }
             int length = page.Content.Length + item.Path.Length;
             if (page.ExtractionStatus != ExtractionStatus.Complete || string.IsNullOrWhiteSpace(page.Content))
                 skipped.Add(new SkippedPage(page.Title, "no usable text"));
@@ -45,14 +66,17 @@ public sealed class AiQualityPlan
                 total += length;
             }
         }
-        return new AiQualityPlan { Pages = planned, Skipped = skipped };
+        return new AiQualityPlan { Pages = planned, Skipped = skipped, ExcludedByScope = excluded, ScopeEmpty = scope.IsEmpty };
     }
 
     public string Describe(AiConnection connection) => Pages.Count == 0
-        ? "No pages are available for AI quality review. Run discovery first; pages without usable text are never sent."
+        ? ScopeEmpty ? "No page types are ticked. Tick at least one of Thin, Stale, In a duplicate group or Healthy to choose which pages the AI reviews."
+          : ExcludedByScope > 0 ? $"No pages match the ticked page types ({ExcludedByScope} pages are outside your selection). Tick more page types to include them."
+          : "No pages are available for AI quality review. Run discovery first; pages without usable text are never sent."
         : $"Plan: send {Pages.Count} pages ({TotalCharacters:N0} characters of page text, titles and hierarchy paths; no tokens or owner IDs) in {Pages.Count} separate requests to {connection.Provider} " +
           $"model {connection.Model}" + (connection.Provider == AiProvider.GitHubCopilot ? " via GitHub Copilot." : $" at {connection.Endpoint.Host}.") +
-          (Skipped.Count == 0 ? string.Empty : $" {Skipped.Count} pages will not be sent: " + string.Join("; ", Skipped.Take(5).Select(x => $"{x.Title} ({x.Reason})")) + (Skipped.Count > 5 ? $"; and {Skipped.Count - 5} more." : "."));
+          (Skipped.Count == 0 ? string.Empty : $" {Skipped.Count} pages will not be sent: " + string.Join("; ", Skipped.Take(5).Select(x => $"{x.Title} ({x.Reason})")) + (Skipped.Count > 5 ? $"; and {Skipped.Count - 5} more." : ".")) +
+          (ExcludedByScope == 0 ? string.Empty : $" {ExcludedByScope} pages are outside your page-type selection and will not be sent.");
 }
 
 public sealed record AiPageQuality(string PageId, string Title, Uri Url, string Path, string Rating, string Summary,

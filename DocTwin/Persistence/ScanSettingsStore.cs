@@ -14,7 +14,11 @@ public sealed record ScanSettings(
     string LexicalThreshold,
     DiscoveryMode Mode,
     bool Authorised,
-    bool SaveConsent = true);
+    bool SaveConsent = true,
+    bool AiThin = true,
+    bool AiStale = true,
+    bool AiDuplicate = true,
+    bool AiHealthy = true);
 
 public sealed class ScanSettingsStore(string? path = null)
 {
