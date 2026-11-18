@@ -174,13 +174,121 @@ DocTwin uses two independent engines:
 | **Review as related material** | Weaker overlap. |
 | **Review shared purpose with the owners** | Potential functional overlap. |
 
-The **Lexical threshold** setting (0.1 to 1.0, default 0.5) controls how similar
-the five-word phrase sets must be for the finder to flag a pair. A pair is also
-flagged when at least 80% (or the threshold, if higher) of the smaller page is
-shared, with at least five common phrases.
+### How a pair gets into the grid, and how it is labelled
 
-The **Review decision** options (Investigate, Await owner, Prefer source,
-Prefer candidate, Keep both, Ignore) and notes are saved locally only. They never change Confluence.
+The finder keeps a pair only if at least one of these tests passes. They are
+checked in this order, and the first that applies decides the **Relationship**.
+
+| Order | Test | Exact rule | Resulting Relationship | Resulting Match basis |
+|---|---|---|---|---|
+| 1 | **Exact text** | Both pages have the same SHA-256 fingerprint of their text (whitespace normalised, **case-sensitive**). | Exact extracted-text duplicate | Identical extracted text |
+| 2 | **Lexical match** | At least 5 shared five-word phrases **and** either Lexical % is at or above the threshold, or at least `max(80%, threshold)` of the smaller page's phrases are shared. | Possible near duplicate (Lexical % at or above the threshold) or Possible partial overlap (matched by the 80% rule only) | 5-word lexical overlap |
+| 3 | **Functional overlap** | Only when test 2 failed. At least 10 shared distinct content words (3+ letters) covering 15% or more of the smaller page's word set, **and** either (a) a shared title identifier, 2+ shared meaningful title terms and 50%+ title overlap, or (b) 3+ shared meaningful title terms and 75%+ title overlap. | Potential functional overlap | Title/identifier + content-word overlap; human review required |
+| 4 | **Same title** | Only when tests 1-3 failed. The two titles normalise to the same key (see below). The inner-content engine then decides. | Same title, content overlap, or Same title, different content | Matching title + inner-content verification |
+
+If none of the four passes, the pair is not listed at all.
+
+Every pair whose titles match is **also** run through the inner-content engine,
+whichever test found it. In that case the **Content verdict** and the
+**Suggestion** come from the inner-content engine (it overrides the lexical
+suggestion), while Relationship and Match basis still describe how the pair was found.
+
+**Meaningful title terms** are words of 3+ letters or digits, lower-cased, excluding
+generic words such as *the, and, for, with, page, copy, overview, guide, documentation,
+reference, integration(s), interface, data, sync, adapter, inbound, outbound,
+specification, design, technical, functional, draft, version*.
+A **title identifier** is a code made of 2-12 letters followed by 2-8 digits,
+for example `INT023`.
+
+**Titles match = Yes** means the titles are the same after normalising: lower-case,
+punctuation and word order ignored, a leading `Copy of` removed, and a trailing
+`copy` or counter such as `(2)` removed. So `Copy of Onboarding Guide (2)` and
+`Onboarding guide` match.
+
+### Relationship, match basis and suggestion together
+
+| Relationship | Typical Match basis | Typical Titles match | Content verdict shown | Suggestion comes from |
+|---|---|---|---|---|
+| Exact extracted-text duplicate | Identical extracted text | Yes or No | `Duplicate - identical content` if titles match, otherwise `Not assessed (titles differ)` | Content engine if titles match, otherwise "Review as a potential duplicate" |
+| Possible near duplicate | 5-word lexical overlap | Yes or No | Any verdict if titles match, otherwise not assessed | Content engine if titles match, otherwise the lexical suggestion table |
+| Possible partial overlap | 5-word lexical overlap | Yes or No | As above | As above |
+| Potential functional overlap | Title/identifier + content-word overlap | Usually No | Any verdict if titles match, otherwise not assessed | "Review shared purpose with the owners" unless titles match |
+| Same title, content overlap | Matching title + inner-content verification | Yes | Duplicate-same, Near duplicate, Contained or Partial overlap | Content engine |
+| Same title, different content | Matching title + inner-content verification | Yes | `Not a duplicate - same title, different content` | Content engine: keep both, consider a clearer title |
+
+### Heading reference (how each number is calculated)
+
+All percentages are rounded to one decimal place and are estimates from
+extracted text only (images, attachments and many macros are not compared).
+
+| Heading | Calculation | How to read it |
+|---|---|---|
+| **Lexical %** | Distinct five-word phrases shared by both pages divided by distinct phrases across both pages (Jaccard similarity). `100` for exact text. | Overall similarity of the two pages. Near 100 means almost the same; 50 means about half the phrases are shared. |
+| **Source covered %** | Shared phrases divided by the source page's phrases. | How much of the source page also appears in the candidate. 100 means the source is fully inside the candidate. |
+| **Candidate-only %** | Candidate phrases that are not in the source divided by the candidate's phrases. | How much extra material the candidate has. Near 0 means the candidate adds nothing new. |
+| **Title overlap %** | Shared meaningful title terms divided by the term count of the shorter title. | Closeness of the titles even when they are not identical. |
+| **Titles match** | Normalised title keys are equal. | Yes means the inner-content engine ran for this pair. |
+| **Content match %** | Block-by-block comparison of the extracted text, one line (paragraph, heading, list item or table cell) at a time: exact blocks first, then reworded blocks, weighted by length across both pages. | How much of the actual content is the same, ignoring titles. |
+| **Word similarity %** | Cosine similarity of word-frequency vectors. | Whether the pages use the same vocabulary in similar proportions, even if reordered. |
+| **Differing numbers / IDs** | Numbers and identifiers present on only one page. | `None` means they agree. Otherwise one page may hold a different limit, account, code or date, so check which is right. |
+| **Content verdict** | Thresholds in the verdict table above. | The plain-language conclusion on the content. |
+| **Space ID** | Confluence space of the matching page. | Shows when a copy lives in another space. |
+| **Match basis / Relationship** | Tables above. | How the pair was found and what kind of match it is. |
+| **Suggestion (advisory)** | Content engine next step when titles match, otherwise the lexical suggestion table. | A starting point for the reviewer, never an instruction. |
+| **Reason / trust limits** | The measurements behind the suggestion, with the reminder that lexical similarity does not prove authority or completeness. | Read before acting. |
+| **Evidence / limits** | Shared phrase counts, fingerprint note and extraction caveats. | Technical detail for auditing a finding. |
+
+### Default ordering
+
+Pairs are listed with exact duplicates first, then by content verdict strength
+(Identical, Same, Near duplicate, Contained, Partial, Different, then not
+assessed), then by higher Lexical %, then by larger shared share of the smaller
+page. Click any header to re-sort.
+
+### Reading common combinations
+
+| What you see | Interpretation | Sensible reviewer action |
+|---|---|---|
+| Exact duplicate, Titles match Yes, `Duplicate - identical content` | Textbook copy. | Confirm the canonical page; review the other for archiving. |
+| Possible near duplicate, `Near duplicate`, Differing numbers/IDs not `None` | Two copies that disagree on specific facts. Highest risk of conflicting instructions. | Ask an owner to reconcile; decide which values are correct. |
+| `One page is contained in the other`, Candidate-only % high | The candidate is a superset of the source (or vice versa). | Ask whether the smaller page is superseded or deliberately separate. |
+| Potential functional overlap, Titles match No | Different wording, likely same purpose (for example two documents for the same integration code). | Review shared purpose with both owners. |
+| Same title, different content | Generic title reused for unrelated pages. | Keep both; consider clearer titles. |
+| Titles match No, Possible partial overlap | Pages share sections but not enough to call a duplicate. | Consider whether the shared sections should live in one place. |
+
+### The scan settings that influence this grid
+
+The **Lexical threshold** (0.1 to 1.0, default 0.5) controls test 2. Lower finds
+more, looser pairs; higher finds fewer, closer pairs.
+
+The line above the grid (scan coverage) reports the scan mode, title searches and
+candidates, search errors, external page body reads, source and external pages
+analysed, candidate pair count, a breakdown of skipped pages (empty or
+unsupported, size limits, access denied, missing or not visible, other read
+errors), whether the source hierarchy, source content and external inventory were
+fully covered, and page cache activity. If any "complete" flag is `False`, results are partial.
+
+### Recording a human review decision
+
+Select a pair, open **Record a local human-review decision**, choose a decision,
+add notes (up to 4,000 characters: owner, approval evidence, audience, open
+questions) and press **Save local review**. This is stored only on your machine
+(page IDs, page versions, notes, timestamp) and never changes Confluence.
+
+| Decision | Intended meaning |
+|---|---|
+| **NotReviewed** | Default. No human has looked at this pair yet. |
+| **Investigate** | Needs a closer look before deciding. |
+| **AwaitOwner** | Waiting for the page owner to respond. |
+| **PreferSource** | The source page should be treated as the one to keep. |
+| **PreferCandidate** | The matching page should be treated as the one to keep. |
+| **KeepBoth** | The pages serve different purposes; no action. |
+| **Ignore** | A false positive or not worth acting on. |
+
+Decisions are the reviewer's record of intent; DocTwin does not act on them.
+Use **Review selected finding** to compare the two pages side by side,
+**Prepare AI** to load the pair for optional AI comparison, and
+**Export review report** to produce an HTML or CSV report.
 
 ---
 
