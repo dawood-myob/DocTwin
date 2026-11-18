@@ -49,7 +49,10 @@
 <WrapPanel Grid.Row="1" Margin="0,8,0,6">
             <Button Content="Discover duplicates" Command="{Binding ScanCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0" />
             <Button Content="Review selected finding" Command="{Binding ReviewFindingCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0" />
-            <Button Content="Prepare AI" Command="{Binding PrepareAiPairCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" /><Button Content="Export review report" Command="{Binding ExportReportCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Content="Prepare AI" Command="{Binding PrepareAiPairCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" /><Button Content="Export review report" Command="{Binding ExportReportCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" />
+            <Button Content="Clear page cache" Command="{Binding ClearCacheCommand}" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.Name="Clear page cache"
+                    ToolTip="Deletes the locally stored page text so the next scan re-reads every page from Confluence. Use it to begin the whole analysis again." />
+            <TextBlock Text="{Binding CacheStatus}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" MaxWidth="520" />
         </WrapPanel>
 <TabControl Grid.Row="2" MinHeight="210" SelectedIndex="1">
             <TabItem Header="Content health">

@@ -26,7 +26,8 @@ Narration: "The Windows WPF client retrieves accessible content with read-only
 REST calls. Credentials are optional local Windows Credential Manager entries.
 Extraction, title/identifier retrieval, lexical evidence and human reviews are
 separate services. Page bodies stay in memory unless a reviewer explicitly
-approves an AI request."
+approves an AI request. The only local copy is the encrypted scan cache, which
+speeds up re-scans after pages are fixed and can be cleared with one button."
 
 Use the architecture sequence diagram. Explain that Workday is the documentation
 domain, not an implemented Workday transaction/API connector. Do not display

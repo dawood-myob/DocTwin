@@ -66,7 +66,7 @@ public partial class ConfluenceViewModel
 
     partial void OnRootUrlChanged(string value) => ClearScan();
     partial void OnSearchSpaceKeysChanged(string value) => ClearScan();
-    partial void OnAllAccessibleSpacesChanged(bool value) => ClearScan();
+    partial void OnAllAccessibleSpacesChanged(bool value) { ClearScan(); RememberChoice(); }
     partial void OnSourceLimitChanged(string value) => ClearScan();
     partial void OnExternalLimitChanged(string value) => ClearScan();
     partial void OnLexicalThresholdChanged(string value) => ClearScan();
@@ -113,6 +113,7 @@ public partial class ConfluenceViewModel
     {
         ClearScan();
         ClearResults();
+        _pageCache.BeginRun();
         var results = new DiscoveryResults();
         await RunAsync(async cancellation =>
         {
@@ -152,6 +153,7 @@ public partial class ConfluenceViewModel
             finally
             {
                 acceptingProgress = false;
+                await SaveCacheAsync();
                 var selection = SelectedFinding;
                 Findings.Clear();
                 foreach (var page in results.SourcePages)
@@ -170,6 +172,7 @@ public partial class ConfluenceViewModel
                     $"Source pages analysed: {results.SourcePages.Count}; external pages analysed: {results.ExternalPages}; candidate pairs: {results.Findings.Count}. {results.SkipSummary}. " +
                     $"Source hierarchy enumerated: {results.SourceHierarchyComplete}; source content complete: {results.SourceContentComplete}; external inventory exhausted: {results.ExternalComplete}. " +
                     "Invisible/restricted pages cannot be counted. Enumeration is not a point-in-time site snapshot. No matches does not prove absence of redundant information.";
+                if (_pageCache.RunSummary() is { Length: > 0 } cacheSummary) ScanCoverage += " " + cacheSummary;
                 ScanWarnings = string.Join("\n", results.Warnings);
                 _health = ContentHealthAnalyzer.Analyse(results);
                 foreach (var row in _health.Rows)

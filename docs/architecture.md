@@ -23,7 +23,11 @@ not title similarity alone. They flag rewritten/combined references for human
 review without claiming semantic equivalence or authority. Findings stream to
 the UI, and bounded scrollable settings protect the evidence/results viewport.
 
-Page bodies stay in memory unless separate AI consent is granted. Loading a
+Page bodies stay in memory unless separate AI consent is granted, apart from an
+optional scan cache: `CachingConfluenceClient` stores page text in a DPAPI-
+encrypted local file (`PageCache`), reuses a page only after a batched version
+check shows it is unchanged, and the user can clear it. Findings are always
+recomputed from current content. Loading a
 new pair resets consent. AI input and outputs are bounded, structured evidence
 quotes are validated, and Confluence credentials are never included. No service
 writes to Confluence. See the README for workflow, scope requirements, retrieval

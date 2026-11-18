@@ -155,6 +155,7 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
             }
             try
             {
+                var newPageIds = new List<string>();
                 await foreach (var child in discovery.GetChildrenAsync(profile, token, node.Id, node.Type, cancellationToken))
                 {
                     if (scheduled.Add(child.Id))
@@ -165,8 +166,11 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
                         results.HierarchyNodes.Add(new SourceHierarchyNode(child.Id, node.Id, child.Title, child.Type,
                             results.HierarchyNodes[node.HierarchyIndex].Depth + 1));
                         queue.Enqueue((child.Id, child.Type, child.Type == "page" ? path : path + " / " + child.Title, hierarchyIndex));
+                        if (child.Type == "page") newPageIds.Add(child.Id);
                     }
                 }
+                if (newPageIds.Count > 0 && client is IPagePrefetch prefetch)
+                    await prefetch.PrefetchAsync(profile, token, newPageIds, cancellationToken);
             }
             catch (Exception ex) when (IsPageFailure(ex))
             {
@@ -253,7 +257,7 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
 
         var seen = new HashSet<string>(sourceIds, StringComparer.Ordinal);
         int pageLimit = mode == DiscoveryMode.Quick ? Math.Min(externalLimit, QuickPageLimit) : externalLimit;
-        await foreach (var reference in ExternalCandidatesAsync(profile, token, spaceKeys, sourceIds, pageLimit, results, progress, cancellationToken))
+        await foreach (var reference in WithPrefetchAsync(ExternalCandidatesAsync(profile, token, spaceKeys, sourceIds, pageLimit, results, progress, cancellationToken), pageLimit, results, profile, token, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!seen.Add(reference.Id))
@@ -320,6 +324,30 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
                 results.Warnings.Add($"External page {reference.Id} could not be read/extracted; it is not an analysed non-match. {FailureReason(ex)}");
             }
         }
+    }
+
+    // Checks versions for small batches of upcoming external pages so unchanged cached pages need no body download.
+    // Lookahead never exceeds the remaining body budget, so the producer's budget checks see the same state as without batching.
+    private async IAsyncEnumerable<ContentReference> WithPrefetchAsync(IAsyncEnumerable<ContentReference> source, int pageLimit, DiscoveryResults results,
+        ConnectionProfile profile, string token, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var batch = new List<ContentReference>(50);
+        await foreach (var reference in source.WithCancellation(cancellationToken))
+        {
+            batch.Add(reference);
+            if (batch.Count < Math.Clamp(pageLimit - results.ExternalAttempts, 1, 50)) continue;
+            await PrefetchBatchAsync(batch, profile, token, cancellationToken);
+            foreach (var item in batch) yield return item;
+            batch.Clear();
+        }
+        await PrefetchBatchAsync(batch, profile, token, cancellationToken);
+        foreach (var item in batch) yield return item;
+    }
+
+    private async Task PrefetchBatchAsync(List<ContentReference> batch, ConnectionProfile profile, string token, CancellationToken cancellationToken)
+    {
+        if (batch.Count > 0 && client is IPagePrefetch prefetch)
+            await prefetch.PrefetchAsync(profile, token, batch.Select(x => x.Id).ToArray(), cancellationToken);
     }
 
     private async IAsyncEnumerable<ContentReference> ExternalCandidatesAsync(ConnectionProfile profile, string token,

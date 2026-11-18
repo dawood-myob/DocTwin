@@ -13,7 +13,8 @@ public sealed record ScanSettings(
     string ExternalLimit,
     string LexicalThreshold,
     DiscoveryMode Mode,
-    bool Authorised);
+    bool Authorised,
+    bool SaveConsent = true);
 
 public sealed class ScanSettingsStore(string? path = null)
 {

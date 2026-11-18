@@ -27,11 +27,13 @@ public partial class ConfluenceViewModel : ObservableObject
     private readonly DuplicateDiscovery _discovery;
     private readonly DocTwin.AI.IAiComparisonProvider _ai;
     private readonly DocTwin.AI.IAiQualityAdvisor? _qualityAdvisor;
+    private readonly PageCache _pageCache;
 
     public ConfluenceViewModel(IConfluenceClient client, ICredentialStore credentials, PageComparison comparison,
         DuplicateDiscovery discovery, DocTwin.AI.IAiComparisonProvider ai, ReviewStore? reviewStore = null,
-        DocTwin.AI.IAiQualityAdvisor? qualityAdvisor = null)
+        DocTwin.AI.IAiQualityAdvisor? qualityAdvisor = null, PageCache? pageCache = null)
     {
+        _pageCache = pageCache ?? new PageCache();
         _reviewStore = reviewStore ?? new ReviewStore();
         _qualityAdvisor = qualityAdvisor ?? ai as DocTwin.AI.IAiQualityAdvisor;
         _client = client;
@@ -71,6 +73,7 @@ public partial class ConfluenceViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(SaveAiSettingsCommand))]
     [NotifyCanExecuteChangedFor(nameof(ImportAiSettingsCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearCacheCommand))]
     private bool _isBusy;
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
@@ -133,7 +136,8 @@ public partial class ConfluenceViewModel : ObservableObject
     partial void OnEmailChanged(string value) => ConnectionDetailsChanged();
     partial void OnScopedTokenChanged(bool value) => ConnectionDetailsChanged();
     partial void OnCloudIdChanged(string value) => ConnectionDetailsChanged();
-    partial void OnAuthorisedChanged(bool value) => InvalidateConnection();
+    partial void OnAuthorisedChanged(bool value) { InvalidateConnection(); RememberChoice(); }
+    partial void OnSaveConsentChanged(bool value) => RememberChoice();
     partial void OnSourceUrlChanged(string value) => ClearResults();
     partial void OnCandidateUrlChanged(string value) => ClearResults();
 

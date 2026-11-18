@@ -28,9 +28,11 @@ public partial class ConfluenceWindow : Window
             Timeout = TimeSpan.FromMinutes(2)
         };
         var client = new ConfluenceClient(_httpClient, new PageContentExtractor());
+        var pageCache = new PageCache();
+        var cachingClient = new CachingConfluenceClient(client, client, pageCache);
         _viewModel = viewModel ?? new ConfluenceViewModel(client, new WindowsCredentialStore(), new PageComparison(),
-            new DuplicateDiscovery(client, new ConfluenceDiscovery(client)),
-            new DocTwin.AI.ProviderSwitchingAiComparison(_aiHttpClient));
+            new DuplicateDiscovery(cachingClient, new ConfluenceDiscovery(client)),
+            new DocTwin.AI.ProviderSwitchingAiComparison(_aiHttpClient), pageCache: pageCache);
         InitializeComponent();
         DataContext = _viewModel;
         if (viewModel == null)
@@ -38,6 +40,7 @@ public partial class ConfluenceWindow : Window
             _viewModel.LoadSavedConnection();
             _viewModel.LoadReviewHistory();
             _viewModel.LoadAiSettings();
+            _viewModel.RefreshCacheStatus();
         }
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
     }

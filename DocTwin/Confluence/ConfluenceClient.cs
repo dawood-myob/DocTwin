@@ -11,7 +11,7 @@ using Polly.RateLimiting;
 
 namespace DocTwin.Confluence;
 
-public sealed partial class ConfluenceClient(HttpClient httpClient, PageContentExtractor extractor) : IConfluenceClient
+public sealed partial class ConfluenceClient(HttpClient httpClient, PageContentExtractor extractor) : IConfluenceClient, IPageStampSource
 {
     private readonly ResiliencePipeline<HttpResponseMessage> _readPipeline = ConfluenceReadPipeline.Create();
 
@@ -64,6 +64,29 @@ public sealed partial class ConfluenceClient(HttpClient httpClient, PageContentE
             OwnerId = OptionalString(root, "ownerId"),
             ExtractionStatus = extracted.Status
         };
+    }
+
+    public async Task<IReadOnlyDictionary<string, PageStamp>> GetStampsAsync(ConnectionProfile profile, string token,
+        IReadOnlyCollection<string> pageIds, CancellationToken cancellationToken)
+    {
+        var stamps = new Dictionary<string, PageStamp>(StringComparer.Ordinal);
+        foreach (var batch in pageIds.Where(x => MyRegex().IsMatch(x)).Distinct(StringComparer.Ordinal).Chunk(100))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var json = await ReadAsync(profile, token, $"api/v2/pages?limit=100&id={string.Join(',', batch)}", cancellationToken);
+            if (!json.RootElement.TryGetProperty("results", out var results) || results.ValueKind != JsonValueKind.Array)
+                continue;
+            foreach (var item in results.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object || OptionalString(item, "id") is not { } id || !MyRegex().IsMatch(id) ||
+                    !item.TryGetProperty("version", out var version) || version.ValueKind != JsonValueKind.Object ||
+                    !version.TryGetProperty("number", out var number) || number.ValueKind != JsonValueKind.Number || !number.TryGetInt32(out int parsed))
+                    continue;
+                stamps[id] = new PageStamp(id, parsed, OptionalString(item, "title") ?? string.Empty, OptionalString(item, "spaceId") ?? string.Empty,
+                    OptionalString(version, "createdAt") ?? string.Empty, OptionalString(item, "parentId"), OptionalString(item, "parentType"), OptionalString(item, "ownerId"));
+            }
+        }
+        return stamps;
     }
 
     private static string? OptionalString(JsonElement element, string propertyName) =>

@@ -36,7 +36,7 @@ errors; it does not yet run a persistent test suite or enforce coverage.
    Windows Credential Manager protects the token for this Windows account. The
    next time you open the window, the token is loaded without displaying it,
    together with your non-secret scan setup (root URL, space keys, limits, scan
-   mode and the authorisation tick, stored in
+   mode and both consent ticks, stored in
    `%LOCALAPPDATA%\DocTwin\scan-settings.json`), so you can go straight to
    **Discover duplicates**; the scan re-validates the connection itself.
    Saving is never automatic. Use **Remove saved connection** to
@@ -139,6 +139,26 @@ proven duplicates. Neither mode guarantees discovery of every redundant page.
 Invisible content, search indexing, rewritten titles, budgets and extraction
 limitations all affect recall. Read coverage and warnings before using a report.
 
+### Scan, fix, re-scan: the page cache
+
+DocTwin keeps a local page cache so repeated scans of the same area are cheaper.
+Before reusing a cached page, it checks that page's current Confluence version
+(batched, up to 100 pages per request, using your token). An unchanged page is
+reused; a changed page is downloaded again; a page your account can no longer
+read is never served from the cache. Matching, quality findings and coverage are
+always recomputed from current content, so after you fix or remove a page and
+scan again, its finding disappears. The coverage note reports how many pages
+were reused, refreshed or newly read.
+
+To begin the whole analysis from scratch, press **Clear page cache** (disabled
+while a scan runs). The next scan then reads every page from Confluence. The
+cache holds page text, so it is encrypted for your Windows account (DPAPI) and
+compressed in `%LOCALAPPDATA%\DocTwin\page-cache.bin`, capped at 6,000 pages and
+250 MB; a damaged or unreadable file is ignored and rebuilt. Clearing it does
+not affect settings, saved tokens or review decisions. The live **Review page
+pair** comparison never uses the cache. AI quality advice is not cached and is
+re-requested (with consent) on each run.
+
 ## Data protection and limitations
 
 - Credentials and connection metadata are saved only in Windows Credential
@@ -146,7 +166,10 @@ limitations all affect recall. Read coverage and warnings before using a report.
   limit applies; oversized credentials can be used without saving. Removing a
   local credential does not revoke the Atlassian token.
 - Page bodies and comparison results stay in application memory unless you
-  explicitly approve sending a loaded pair to an AI provider. AI requests
+  explicitly approve sending a loaded pair to an AI provider. The one exception
+  is the scan page cache: page text read by Discover is also kept in an
+  encrypted (Windows DPAPI, current user) local file until you press **Clear
+  page cache**. Delete `page-cache.bin` or clear it if the machine is shared. AI requests
   include both texts, titles, IDs, available owner/parent metadata, hierarchy
   context and extraction limitations, never the Confluence token. No application
   content logging is enabled. Exports contain internal titles, links, evidence
