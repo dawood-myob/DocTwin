@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DocTwin.Analysis;
 using DocTwin.Confluence;
 
 namespace DocTwin.AI;
@@ -118,6 +119,7 @@ public static class AiComparisonContract
         int metadataCharacters = (sourceRootId?.Length ?? 0) + (sourceRootTitle?.Length ?? 0) + (sourcePath?.Length ?? 0);
         if ((long)source.Content.Length + candidate.Content.Length + metadataCharacters > MaximumInputCharacters)
             throw new InvalidDataException($"These pages and hierarchy context exceed the {MaximumInputCharacters:N0}-character AI input limit. No content was sent or silently truncated. The deterministic comparison remains available.");
+        SensitiveContentGuard.EnsureClean(source.Title, source.Content, candidate.Title, candidate.Content, sourceRootTitle, sourcePath);
         return JsonSerializer.Serialize(new
         {
             hierarchy = new { sourceRootId, sourceRootTitle, sourcePath },

@@ -25,7 +25,9 @@ public partial class ConfluenceViewModel
 
     public string AiQualityReadiness => IsBusy ? "An operation is running. Wait for it to finish or choose Cancel."
         : _qualityAdvisor == null ? "AI quality review is not available in this build."
-        : _aiQualityPlan.Pages.Count == 0 ? (_scanSourcePages.Count == 0 ? "Run discovery first; there are no pages to review yet." : "Tick at least one matching page type above; there are no pages to review in the current selection.")
+        : _aiQualityPlan.Pages.Count == 0 ? (_scanSourcePages.Count == 0 ? "Run discovery first; there are no pages to review yet."
+            : _aiQualityPlan.SensitivePages.Count > 0 && _aiQualityPlan.ExcludedByScope == 0 ? "Every reviewable page contains possible secrets, which are never sent to AI. Remove them in Confluence and scan again."
+            : "Tick at least one matching page type above; there are no pages to review in the current selection.")
         : !AiQualityConsent ? "Review the plan above, check the provider on the AI tab, then approve sharing to enable the review."
         : "Sharing approved for exactly the pages in the plan. Choose Run AI quality review.";
 

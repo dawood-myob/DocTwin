@@ -163,6 +163,14 @@ re-requested (with consent) on each run.
 
 ## Data protection and limitations
 
+- **Secrets guardrail.** Pages that appear to contain passwords, keys, tokens or
+  private keys are flagged **Sensitive content** (highest severity) by a local,
+  offline scanner. Those pages are never sent to an AI provider: they are removed
+  from the AI quality plan, refused when building any AI request, and checked again
+  on the final payload before any key is read. Their values are masked in previews
+  and diffs and never shown, exported or logged. The scanner is heuristic, so a
+  clean result is not proof there are no secrets. See
+  [docs/reading-the-results.md](docs/reading-the-results.md#sensitive-content-guardrail).
 - Credentials and connection metadata are saved only in Windows Credential
   Manager, never plain-text settings or SQLite. Its 2,560-byte credential-blob
   limit applies; oversized credentials can be used without saving. Removing a

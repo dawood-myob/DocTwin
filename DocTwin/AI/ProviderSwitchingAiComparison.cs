@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using DocTwin.Analysis;
 using DocTwin.Networking;
 using GitHub.Copilot;
 
@@ -49,6 +50,8 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
     private async Task<string> CompleteHttpAsync(AiConnection request, string input, bool claude, AiCall call,
         CancellationToken cancellationToken)
     {
+        // Backstop for every provider: the final payload is checked again before any key is read or request is made.
+        SensitiveContentGuard.EnsureClean(input);
         var endpoint = request.Endpoint;
         if (!endpoint.IsAbsoluteUri || endpoint.UserInfo.Length != 0 || endpoint.Fragment.Length != 0 ||
             (endpoint.Scheme != Uri.UriSchemeHttps && !(endpoint.Scheme == Uri.UriSchemeHttp && endpoint.IsLoopback)))
@@ -145,6 +148,7 @@ public sealed class ProviderSwitchingAiComparison(HttpClient httpClient) : IAiCo
     private static async Task<string> CompleteCopilotAsync(AiConnection request, string input, AiCall call,
         CancellationToken cancellationToken)
     {
+        SensitiveContentGuard.EnsureClean(input);
         var environment = Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>()
             .ToDictionary(entry => (string)entry.Key, entry => (string)entry.Value!, StringComparer.OrdinalIgnoreCase);
         environment.Remove("COPILOT_SDK_AUTH_TOKEN");

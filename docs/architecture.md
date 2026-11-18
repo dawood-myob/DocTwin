@@ -44,6 +44,16 @@ in scope. AI is optional and requires separate organisational approval.
 
 ## Implemented hardening and decisions
 
+- **ADR-008: secrets never reach AI (accepted).** A local regex scanner
+  (`Analysis/SecretScanner.cs`) flags possible credentials as the `Sensitive content`
+  health status. Enforcement is layered and fails closed: `AiQualityPlan` drops
+  flagged pages before user selection; `AiQualityContract.BuildInput` and
+  `AiComparisonContract.BuildInput` throw if any sent field matches; and
+  `ProviderSwitchingAiComparison` re-scans the final payload before reading a key
+  or calling any provider (HTTP or Copilot SDK). An unfinished scan (regex
+  timeout) counts as a match. Previews, diffs and differing-facts text are masked.
+  Whole-page blocking was chosen over redaction because one missed pattern would
+  leak. Detection is heuristic and documented as such.
 - **ADR-001: read-only desktop boundary (accepted).** Keep one WPF deployment
   and constructor-injected service contracts. Analysis, Confluence, AI,
   persistence, diagnostics and presentation are separated by namespaces, not

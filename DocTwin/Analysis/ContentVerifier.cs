@@ -56,8 +56,9 @@ public static partial class ContentVerifier
 
     public static ContentAssessment Assess(string sourceText, string candidateText)
     {
-        var source = Block.Parse(sourceText);
-        var candidate = Block.Parse(candidateText);
+        // Masked first so the "differing numbers/identifiers" shown to the user can never expose a secret.
+        var source = Block.Parse(SecretScanner.Mask(sourceText));
+        var candidate = Block.Parse(SecretScanner.Mask(candidateText));
         double sourceTotal = source.Sum(x => (double)x.Length);
         double candidateTotal = candidate.Sum(x => (double)x.Length);
         var sourceFacts = Facts(source);

@@ -28,6 +28,7 @@ public sealed class AiQualityPlan
     public IReadOnlyList<PlannedPage> Pages { get; init; } = [];
     public IReadOnlyList<SkippedPage> Skipped { get; init; } = [];
     public int ExcludedByScope { get; init; }
+    public IReadOnlyList<string> SensitivePages { get; init; } = [];
     public bool ScopeEmpty { get; init; }
     public int TotalCharacters => Pages.Sum(x => x.Page.Content.Length);
 
@@ -40,12 +41,21 @@ public sealed class AiQualityPlan
         var severity = rows.ToDictionary(x => x.Key, x => x.Value.Severity, StringComparer.Ordinal);
         var planned = new List<PlannedPage>();
         var skipped = new List<SkippedPage>();
+        var sensitive = new List<string>();
         long total = 0;
         int excluded = 0;
         // Pages with automated flags first; they are the likeliest to benefit from review.
         foreach (var item in pages.OrderByDescending(x => severity.GetValueOrDefault(x.Page.Id)).ThenBy(x => x.Page.Title, StringComparer.OrdinalIgnoreCase))
         {
             var page = item.Page;
+            // Hard guardrail, applied before any user selection: pages with possible secrets are never planned.
+            if (rows.TryGetValue(page.Id, out var healthRow)
+                    ? healthRow.Status.Contains("Sensitive content", StringComparison.Ordinal)
+                    : SecretScanner.HasSecrets(page.Content) || SecretScanner.HasSecrets(page.Title) || SecretScanner.HasSecrets(item.Path))
+            {
+                sensitive.Add(page.Title);
+                continue;
+            }
             if (!scope.Includes(rows.TryGetValue(page.Id, out var row) ? row.Status : null))
             {
                 excluded++;
@@ -66,17 +76,21 @@ public sealed class AiQualityPlan
                 total += length;
             }
         }
-        return new AiQualityPlan { Pages = planned, Skipped = skipped, ExcludedByScope = excluded, ScopeEmpty = scope.IsEmpty };
+        return new AiQualityPlan { Pages = planned, Skipped = skipped, ExcludedByScope = excluded, SensitivePages = sensitive, ScopeEmpty = scope.IsEmpty };
     }
 
+    private string SensitiveNote => SensitivePages.Count == 0 ? string.Empty
+        : $" {SensitivePages.Count} pages contain possible secrets and are never sent to AI: {string.Join("; ", SensitivePages.Take(5))}{(SensitivePages.Count > 5 ? $"; and {SensitivePages.Count - 5} more" : string.Empty)}.";
+
     public string Describe(AiConnection connection) => Pages.Count == 0
-        ? ScopeEmpty ? "No page types are ticked. Tick at least one of Thin, Stale, In a duplicate group or Healthy to choose which pages the AI reviews."
+        ? (ScopeEmpty ? "No page types are ticked. Tick at least one of Thin, Stale, In a duplicate group or Healthy to choose which pages the AI reviews."
           : ExcludedByScope > 0 ? $"No pages match the ticked page types ({ExcludedByScope} pages are outside your selection). Tick more page types to include them."
-          : "No pages are available for AI quality review. Run discovery first; pages without usable text are never sent."
+          : SensitivePages.Count > 0 ? "No pages are available for AI quality review."
+          : "No pages are available for AI quality review. Run discovery first; pages without usable text are never sent.") + SensitiveNote
         : $"Plan: send {Pages.Count} pages ({TotalCharacters:N0} characters of page text, titles and hierarchy paths; no tokens or owner IDs) in {Pages.Count} separate requests to {connection.Provider} " +
           $"model {connection.Model}" + (connection.Provider == AiProvider.GitHubCopilot ? " via GitHub Copilot." : $" at {connection.Endpoint.Host}.") +
           (Skipped.Count == 0 ? string.Empty : $" {Skipped.Count} pages will not be sent: " + string.Join("; ", Skipped.Take(5).Select(x => $"{x.Title} ({x.Reason})")) + (Skipped.Count > 5 ? $"; and {Skipped.Count - 5} more." : ".")) +
-          (ExcludedByScope == 0 ? string.Empty : $" {ExcludedByScope} pages are outside your page-type selection and will not be sent.");
+          (ExcludedByScope == 0 ? string.Empty : $" {ExcludedByScope} pages are outside your page-type selection and will not be sent.") + SensitiveNote;
 }
 
 public sealed record AiPageQuality(string PageId, string Title, Uri Url, string Path, string Rating, string Summary,

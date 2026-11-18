@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DocTwin.Analysis;
 using DocTwin.Confluence;
 
 namespace DocTwin.AI;
@@ -109,6 +110,7 @@ public static class AiQualityContract
             throw new InvalidDataException("The page has no usable extracted text, so it cannot be assessed by AI. No content was sent.");
         if (page.Content.Length + (path?.Length ?? 0) > MaximumPageCharacters)
             throw new InvalidDataException($"The page exceeds the {MaximumPageCharacters:N0}-character AI quality limit. No content was sent or silently truncated.");
+        SensitiveContentGuard.EnsureClean(page.Title, page.Content, path, string.Join("\n", page.Limitations));
         return JsonSerializer.Serialize(new
         {
             page = new { pageId = page.Id, title = page.Title, hierarchyPath = path, lastUpdated = page.Updated, version = page.Version, text = page.Content, limitations = page.Limitations }

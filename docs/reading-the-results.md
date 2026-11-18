@@ -50,11 +50,13 @@ Default order is most severe first, then alphabetical by title.
 
 A page has exactly one of these status labels. **Thin**, **Stale** and
 **Duplicate group** can combine with ` + ` (for example `Thin + Stale`,
-`Stale + Duplicate group`, `Thin + Stale + Duplicate group`).
+`Stale + Duplicate group`, `Thin + Stale + Duplicate group`). **Sensitive content**
+can also combine with any of them, for example `Sensitive content + Thin`.
 
 | Status | Severity | Rule | What it usually means | Suggested human action |
 |---|---|---|---|---|
-| **Empty** | 3 (highest) | The page has no readable text at all (0 words). | A placeholder, a draft nobody finished, or a page whose content is only in attachments, images or macros. If the page has child pages the advice says it may be an **index / container page**. | Ask the owner whether it is intended. Container pages: confirm and consider a short overview. Otherwise complete it or review it for removal. |
+| **Sensitive content** | 4 (highest) | The local secret scanner found a possible password, key, token or private key in the page text. | Credentials were pasted into the page by mistake. The advice names the kind and the line, never the value. | Ask the owner to remove the secret from the page and its version history and **rotate the credential**. The page is never sent to AI. See [Sensitive content guardrail](#sensitive-content-guardrail). |
+| **Empty** | 3 | The page has no readable text at all (0 words). | A placeholder, a draft nobody finished, or a page whose content is only in attachments, images or macros. If the page has child pages the advice says it may be an **index / container page**. | Ask the owner whether it is intended. Container pages: confirm and consider a short overview. Otherwise complete it or review it for removal. |
 | **Thin** | 2 | Fewer than **50 words** (not empty). | Too little to be useful guidance: a stub, a heading with a sentence, a template that was never filled in. | Add purpose, owner and steps, or merge it into a related page. |
 | **Duplicate group** | 2 | The page is linked to other pages by exact or near-duplicate findings. | Several copies of the same guidance exist, so readers may not know which to trust. | Confirm the canonical page, ask an owner to reconcile, or review the copies for archiving. |
 | **Stale** | 1 | Last updated **18 or more months** ago (a month is 30.44 days). | The content may be out of date. Age alone does not mean it is wrong. | Ask the owner to confirm it is still accurate, or review it for archiving. |
@@ -81,6 +83,7 @@ Notes:
 | **look healthy** | Rows with status `Healthy`. |
 | **at least one suggestion** | Assessed pages minus healthy pages. |
 | **Empty / Thin / Not updated for 18+ months / In duplicate groups** | Number of pages carrying that label. A page can count in several. |
+| **WARNING: N pages may contain passwords or keys** | A line above the summary, shown only when the secret scanner flagged pages. |
 | **Duplicate groups** | Number of distinct groups. Pages are grouped transitively: if A matches B and B matches C, all three form one group. |
 | **pages ... would be redundant** | If one page were kept per group, the rest (group size minus one). |
 | **about N words (roughly M minutes of reading per pass)** | Word count of the copies that would be redundant, treating the longest page in each group as the keeper; minutes assume 200 words per minute. A rough effort indicator, not a precise saving. |
@@ -314,11 +317,16 @@ Pages are selected from the source tree after a scan, in this order:
    the plan as *not sent* with the reason.
 4. **No text, no send.** Empty pages, and pages with no extractable text, are never
    sent.
+5. **No secrets, no send.** Pages flagged **Sensitive content** are always excluded,
+   whatever you tick. See [Sensitive content guardrail](#sensitive-content-guardrail).
 
 The plan text shows the provider, model, page count and every exclusion before you
 approve. Changing the selection, model or provider withdraws your consent, so you
 always approve exactly what will be sent. Each page is one request, and the review
 stops early after three consecutive failures.
+
+### Columns
+
 | Column | Meaning |
 |---|---|
 | **AI rating** | `Good`: clear and usable. `NeedsRefinement`: useful but has gaps. `Poor`: hard to use as written. `Uncertain`: not enough text to judge. |
@@ -355,6 +363,47 @@ and visible content.
 
 ---
 
+## Sensitive content guardrail
+
+Confluence pages sometimes hold passwords, keys or tokens that were pasted by
+mistake. DocTwin highlights them and guarantees, in code, that they are never
+sent to an AI provider.
+
+**What it detects (locally, offline).** Private keys; AWS, GitHub, Atlassian, Slack,
+Google and Stripe key formats; AI provider API keys; JSON web tokens; passwords
+embedded in URLs or connection strings; `password:`, `secret=`, `api key:` and
+`token:` followed by a value that looks real (it must contain a digit or a symbol);
+and long random-looking strings next to words such as key, secret or token.
+Placeholders (`<password>`, `${TOKEN}`, `********`) and plain prose ("the password
+policy requires...") are ignored.
+
+**What you see.** A **Sensitive content** status (severity 4, sorted first), advice
+naming the kind and the line, and a WARNING line in the summary. The value itself is
+never shown, exported or logged.
+
+**What is enforced.**
+
+| Layer | Behaviour |
+|---|---|
+| AI quality plan | Flagged pages are removed before your page-type ticks apply. They cannot be re-added. The plan lists them as "never sent to AI". |
+| AI payload builders | Building a request for a page, or a pair, throws if the title, text, path or limitations contain a possible secret. Pair explanation therefore refuses if either page is flagged. |
+| Provider call | The final payload is scanned again before any key is read or any request is made. The check applies to every provider, including GitHub Copilot. If the scan cannot finish, it is treated as a possible secret. |
+| Local displays | The Source hierarchy preview, the side-by-side page diff and the "differing numbers/identifiers" text show `[REDACTED: kind]` instead of the value. |
+
+**Limits - please read.**
+
+- It is heuristic. It can miss a secret (for example a password written as plain
+  prose, or one that exists only in an image, attachment or macro) and it can flag
+  harmless text. A clean result is **not** proof that a page has no secrets.
+- Because masked text is compared, two pages that differ only in a secret value can
+  look identical in the content engine.
+- The encrypted local page cache still stores the page text on this machine. It never
+  leaves the machine.
+- Flagging a page does not fix it. A person must remove the secret from the page
+  (and its version history) and rotate the credential.
+
+---
+
 ## Repeat scans and the page cache
 
 - DocTwin keeps an encrypted local page cache. On each scan it checks every
@@ -376,6 +425,7 @@ and visible content.
 - A person reviews every finding and decides what to do.
 - DocTwin only reads content the account is authorised to see and only for the approved scope.
 - Nothing is ever changed, merged, redirected, archived or deleted by the tool.
+- Pages with possible passwords or keys are highlighted and are never sent to AI (see the guardrail section).
 
 ## Reusing this in Confluence
 

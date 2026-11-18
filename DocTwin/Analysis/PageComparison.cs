@@ -20,7 +20,8 @@ public sealed class PageComparison
         if (source.ExtractionStatus != ExtractionStatus.Complete || candidate.ExtractionStatus != ExtractionStatus.Complete ||
             string.IsNullOrWhiteSpace(source.Content) || string.IsNullOrWhiteSpace(candidate.Content))
             throw new ArgumentException("Both pages must contain usable extracted text. Empty, unsupported or size-limited pages cannot be compared; inspect the original pages and extraction warnings.");
-        var diff = new SideBySideDiffBuilder(new Differ()).BuildDiffModel(source.Content, candidate.Content);
+        // The displayed diff never shows possible secrets; the identical check below still uses the real text.
+        var diff = new SideBySideDiffBuilder(new Differ()).BuildDiffModel(SecretScanner.Mask(source.Content), SecretScanner.Mask(candidate.Content));
         var rows = new List<ComparisonRow>();
         int changed = 0;
         int total = 0;

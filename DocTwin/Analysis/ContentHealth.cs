@@ -28,10 +28,12 @@ public sealed class ContentHealthReport
     public int RedundantPages { get; init; }
     public int RedundantWords { get; init; }
     public int HealthyPages { get; init; }
+    public int SensitivePages { get; init; }
 
     public string Summary => PagesAssessed == 0
         ? "No page content was analysed yet. Run discovery to see the content health summary."
-        : $"{PagesAssessed} pages assessed in the source tree. {HealthyPages} look healthy; {PagesAssessed - HealthyPages} have at least one suggestion.\n" +
+        : (SensitivePages == 0 ? string.Empty : $"WARNING: {SensitivePages} pages may contain passwords or keys. They are flagged as Sensitive content, their values are never shown, and they are never sent to AI.\n") +
+          $"{PagesAssessed} pages assessed in the source tree. {HealthyPages} look healthy; {PagesAssessed - HealthyPages} have at least one suggestion.\n" +
           $"Empty: {EmptyPages} | Thin (under {ThinWordLimit} words): {ThinPages} | Not updated for {StaleMonths}+ months: {StalePages} | In duplicate groups: {DuplicatePages}.\n" +
           $"Duplicate groups: {Groups.Count}. If one page were kept per group, {RedundantPages} pages and about {RedundantWords:N0} words (roughly {Math.Max(RedundantWords / ReadingWordsPerMinute, RedundantWords > 0 ? 1 : 0)} minutes of reading per pass) would be redundant. " +
           "These are suggestions for a person to review, not facts or instructions; DocTwin never changes Confluence.";
@@ -62,6 +64,13 @@ public static class ContentHealthAnalyzer
             var issues = new List<string>();
             var advice = new List<string>();
             int severity = 0;
+            var secrets = SecretScanner.Scan(page.Content);
+            if (secrets.Count > 0)
+            {
+                issues.Add("Sensitive content");
+                advice.Add($"Possible secret found ({SecretScanner.Describe(secrets)}). The value is not shown here and this page is never sent to AI. Ask the owner to remove it from the page and rotate the credential.");
+                severity = 4;
+            }
             if (words < ContentHealthReport.ThinWordLimit)
             {
                 issues.Add("Thin");
@@ -99,7 +108,8 @@ public static class ContentHealthAnalyzer
             DuplicatePages = groupOf.Count,
             RedundantPages = redundantPages,
             RedundantWords = groups.Sum(x => x.RedundantWords),
-            HealthyPages = rows.Count(x => x.Status == "Healthy")
+            HealthyPages = rows.Count(x => x.Status == "Healthy"),
+            SensitivePages = rows.Count(x => x.Status.Contains("Sensitive content", StringComparison.Ordinal))
         };
     }
 
