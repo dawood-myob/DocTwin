@@ -1,0 +1,45 @@
+using System.IO;
+using System.Text.Json;
+using DocTwin.Persistence;
+
+namespace DocTwin.ViewModels;
+
+public partial class ConfluenceViewModel
+{
+    private readonly ScanSettingsStore _scanSettings = new();
+
+    private void ApplyScanSettings(bool restoreAuthorisation)
+    {
+        try
+        {
+            var saved = _scanSettings.Read();
+            if (saved == null) return;
+            RootUrl = saved.RootUrl;
+            SearchSpaceKeys = saved.SearchSpaceKeys;
+            AllAccessibleSpaces = saved.AllAccessibleSpaces;
+            SourceLimit = saved.SourceLimit;
+            ExternalLimit = saved.ExternalLimit;
+            LexicalThreshold = saved.LexicalThreshold;
+            SelectedScanMode = saved.Mode;
+            // The authorisation tick is only restored alongside a saved credential, which was itself saved after the user confirmed it.
+            if (restoreAuthorisation) Authorised = saved.Authorised;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+        {
+            Status = "Saved scan settings could not be loaded. Enter them again; existing settings were not overwritten.";
+        }
+    }
+
+    private void RememberScanSettings()
+    {
+        try
+        {
+            _scanSettings.Save(new ScanSettings(RootUrl.Trim(), SearchSpaceKeys.Trim(), AllAccessibleSpaces, SourceLimit.Trim(),
+                ExternalLimit.Trim(), LexicalThreshold.Trim(), SelectedScanMode, Authorised));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            // Remembering the setup is a convenience; a failure must never block saving or scanning.
+        }
+    }
+}

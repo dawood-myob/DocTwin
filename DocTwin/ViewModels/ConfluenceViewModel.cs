@@ -92,6 +92,7 @@ public partial class ConfluenceViewModel : ObservableObject
             var saved = _credentials.Read();
             if (saved == null)
             {
+                ApplyScanSettings(restoreAuthorisation: false);
                 CredentialStatus = "No saved connection. Token will remain in memory unless you explicitly save it.";
                 return;
             }
@@ -100,8 +101,10 @@ public partial class ConfluenceViewModel : ObservableObject
             Email = profile.Email;
             ScopedToken = profile.ScopedToken;
             CloudId = profile.CloudId;
+            ApplyScanSettings(restoreAuthorisation: true);
             _token = saved.Token;
-            CredentialStatus = "Saved token loaded securely from Windows Credential Manager. It is not displayed. Re-test to validate it.";
+            CredentialStatus = "Saved token loaded securely from Windows Credential Manager. It is not displayed; leave the token box empty and go straight to scanning.";
+            Status = "Saved connection and scan settings restored. Open Discover duplicates and run the scan; the connection is re-validated automatically.";
         }
         catch (Win32Exception)
         {
@@ -210,6 +213,7 @@ public partial class ConfluenceViewModel : ObservableObject
         try
         {
             _credentials.Save(_validatedProfile, _token);
+            RememberScanSettings();
             CredentialStatus = "Connection saved in Windows Credential Manager for this Windows account. The token is not displayed.";
             Status = "Validated connection saved securely. You can now compare live Confluence pages.";
         }

@@ -127,6 +127,7 @@ public partial class ConfluenceViewModel
             if (sourceLimit is < 1 or > 1000 || externalLimit is < 1 or > 5000 || !double.IsFinite(threshold) || threshold is < 0.1 or > 1)
                 throw new ArgumentException("Source nodes must be 1-1,000; external pages 1-5,000; lexical threshold 0.1-1.0.");
             IsScanSettingsExpanded = false;
+            RememberScanSettings();
             await _client.TestConnectionAsync(profile, _token, cancellation);
             IsConnected = true;
             _validatedProfile = profile;

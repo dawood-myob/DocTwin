@@ -34,8 +34,12 @@ errors; it does not yet run a persistent test suite or enforce coverage.
    used here) and page read access (REST v2). No write scopes are needed.
 5. Optionally select the storage-consent checkbox and **Save validated token**.
    Windows Credential Manager protects the token for this Windows account. The
-   next time you open the window, the token is loaded without displaying it;
-   re-test it. Saving is never automatic. Use **Remove saved connection** to
+   next time you open the window, the token is loaded without displaying it,
+   together with your non-secret scan setup (root URL, space keys, limits, scan
+   mode and the authorisation tick, stored in
+   `%LOCALAPPDATA%\DocTwin\scan-settings.json`), so you can go straight to
+   **Discover duplicates**; the scan re-validates the connection itself.
+   Saving is never automatic. Use **Remove saved connection** to
    remove it locally; revocation must be done separately in Atlassian.
 6. On **Review page pair**, enter the reference/source and candidate
    page URLs, then **Fetch & compare live pages**. Both must belong to your
