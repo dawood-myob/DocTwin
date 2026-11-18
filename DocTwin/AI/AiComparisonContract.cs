@@ -194,7 +194,7 @@ public static class AiComparisonContract
         };
     }
 
-    private static string NormaliseForQuote(string text)
+    internal static string NormaliseForQuote(string text)
     {
         var builder = new System.Text.StringBuilder(text.Length);
         bool space = false;

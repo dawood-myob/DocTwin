@@ -22,6 +22,7 @@ public sealed class AiQualityResult
     [JsonRequired] public List<AiQualityIssue> Issues { get; set; } = [];
     [JsonRequired] public string SuggestedAction { get; set; } = string.Empty;
     [JsonRequired] public List<string> Uncertainties { get; set; } = [];
+    [JsonIgnore] public int DroppedIssues { get; set; }
 }
 
 public sealed class AiQualityIssue
@@ -134,17 +135,25 @@ public static class AiQualityContract
             result.Issues == null || result.Issues.Count > 15 || result.Uncertainties == null ||
             result.Uncertainties.Count > 20 || result.Uncertainties.Any(x => string.IsNullOrWhiteSpace(x) || x.Length > 2000))
             throw new InvalidDataException("AI returned an unsupported or incomplete quality assessment. It was not accepted.");
+        // Quotes are matched ignoring whitespace layout and curly-versus-straight quotes; issues whose quote is not on the page are dropped, not the whole assessment.
+        string pageText = AiComparisonContract.NormaliseForQuote(page.Content);
+        var verified = new List<AiQualityIssue>();
         foreach (var issue in result.Issues)
         {
             if (issue == null || !Categories.Contains(issue.Category) || issue.Quote == null ||
                 string.IsNullOrWhiteSpace(issue.Explanation) || issue.Explanation.Length > 2000 ||
                 string.IsNullOrWhiteSpace(issue.Suggestion) || issue.Suggestion.Length > 2000 || issue.Quote.Length > 2000 ||
-                (issue.Quote.Length == 0 && issue.Category != "Completeness") ||
-                (issue.Quote.Length > 0 && !page.Content.Contains(issue.Quote, StringComparison.Ordinal)))
-                throw new InvalidDataException("AI evidence did not match the actual page text or the expected structure. The assessment was not accepted.");
+                (string.IsNullOrWhiteSpace(issue.Quote) && issue.Category != "Completeness") ||
+                (!string.IsNullOrWhiteSpace(issue.Quote) && !pageText.Contains(AiComparisonContract.NormaliseForQuote(issue.Quote), StringComparison.Ordinal)))
+                continue;
+            verified.Add(issue);
         }
+        result.DroppedIssues = result.Issues.Count - verified.Count;
+        result.Issues = verified;
         if (result.Rating is "NeedsRefinement" or "Poor" && result.Issues.Count == 0)
-            throw new InvalidDataException("AI rated the page as needing work without any supporting issue. The assessment was not accepted.");
+            throw new InvalidDataException(result.DroppedIssues > 0
+                ? "AI evidence did not match the actual page text or the expected structure. The assessment was not accepted."
+                : "AI rated the page as needing work without any supporting issue. The assessment was not accepted.");
         return result;
     }
 }

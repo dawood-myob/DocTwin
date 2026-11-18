@@ -341,6 +341,26 @@ AI advice is a second opinion on writing quality. It is independent of the
 rule-based Content health statuses, so a `Healthy` page can still be rated
 `NeedsRefinement`.
 
+### What "Not accepted" means
+
+The AI rating column says **Not accepted** when DocTwin discarded the AI's answer
+for that page. It is a safety outcome, not a verdict on the page: the page simply
+has no AI advice. Nothing is lost and no content was changed. Read the **Not
+accepted because** column (scroll right) for the reason.
+
+| Reason shown | What it means | What to do |
+|---|---|---|
+| AI evidence did not match the actual page text | Every issue the AI gave quoted text that is not on the page (invented or paraphrased). Spacing and curly-versus-straight quote differences are ignored, and an issue with a bad quote is dropped on its own, so this only appears when none survive. | Run the review again, or try a stronger model. Very short or macro-only pages fail most often. |
+| AI rated the page as needing work without any supporting issue | `NeedsRefinement` or `Poor` with no issue to back it. | Run again. |
+| AI returned an unsupported or incomplete assessment / did not match the expected structure | The answer was not in the required format (unknown rating, missing fields, oversized text). | Run again or switch model. |
+| Provider errors (HTTP code, "not signed in", "set the ... variable", network or TLS failure) | The provider could not answer. Nothing about the page is implied. | Fix the key, sign-in, model or network, then run again. |
+| The page has no usable extracted text / exceeds the size limit | Nothing was sent for this page. | Open the page in Confluence; the content may be macro-only or very large. |
+
+If **three pages in a row** are not accepted, the run stops early and says so,
+because the provider, key or model is probably wrong. When some AI issues are left
+out because their quote was not on the page, the page is still accepted and the
+**Uncertainties** column says how many were left out.
+
 ---
 
 ## 4. Source hierarchy

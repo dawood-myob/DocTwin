@@ -141,7 +141,8 @@ public static class AiTreeQualityReview
                 consecutiveFailures = 0;
                 row = new AiPageQuality(planned.Page.Id, planned.Page.Title, planned.Page.Url, planned.Path, result.Rating, result.Summary,
                     string.Join("\n", result.Issues.Select(x => $"{x.Category}: {x.Explanation} Suggestion: {x.Suggestion}" + (x.Quote.Length == 0 ? string.Empty : $" (\"{x.Quote}\")"))),
-                    result.SuggestedAction, string.Join("; ", result.Uncertainties), string.Empty);
+                    result.SuggestedAction, string.Join("; ", result.Uncertainties) +
+                        (result.DroppedIssues > 0 ? $" ({result.DroppedIssues} AI issue(s) left out: the quoted text was not found on the page.)" : string.Empty), string.Empty);
             }
             catch (Exception ex) when (ex is InvalidDataException or System.Net.Http.HttpRequestException or System.Text.Json.JsonException or TimeoutException or UnauthorizedAccessException)
             {
