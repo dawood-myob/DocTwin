@@ -40,6 +40,7 @@ public sealed record DuplicateFinding(ConfluencePage Source, ConfluencePage Cand
 public sealed class DiscoveryResults
 {
     public List<DiscoveredPage> SourcePages { get; } = [];
+    public List<DiscoveredPage> EmptySourcePages { get; } = [];
     public List<SourceHierarchyNode> HierarchyNodes { get; } = [];
     public List<DuplicateFinding> Findings { get; } = [];
     public List<string> Warnings { get; } = [];
@@ -134,6 +135,8 @@ public sealed partial class DuplicateDiscovery(IConfluenceClient client, IConflu
                     {
                         sourceContentFailed = true;
                         RecordContentSkip(results, page);
+                        if (page.ExtractionStatus == ExtractionStatus.NoText || (page.ExtractionStatus == ExtractionStatus.Complete && string.IsNullOrWhiteSpace(page.Content)))
+                            results.EmptySourcePages.Add(new DiscoveredPage(page, path));
                         results.Warnings.Add($"Source page {node.Id} was skipped for matching ({page.ExtractionStatus}). Its children are still traversed. {string.Join(" ", page.Limitations)}");
                     }
                     else

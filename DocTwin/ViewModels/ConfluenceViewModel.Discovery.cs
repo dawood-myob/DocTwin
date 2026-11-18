@@ -57,6 +57,9 @@ public partial class ConfluenceViewModel
     public ObservableCollection<DuplicateFinding> Findings { get; } = [];
     public ObservableCollection<DiscoveredPage> SourcePages { get; } = [];
     public ObservableCollection<SourceTreeItem> SourceTree { get; } = [];
+    public ObservableCollection<PageHealthRow> HealthRows { get; } = [];
+    [ObservableProperty] private string _contentHealthSummary = "No content health analysis yet. Run discovery on a root page.";
+    private ContentHealthReport? _health;
     [ObservableProperty] private string _sourceTreeDetails = "Select a node to inspect its context and extracted key-text preview.";
     public IReadOnlyList<AiProvider> AiProviders { get; } = Enum.GetValues<AiProvider>();
     public bool UsesApiKey => SelectedAiProvider != AiProvider.GitHubCopilot;
@@ -74,6 +77,9 @@ public partial class ConfluenceViewModel
         Findings.Clear();
         SourcePages.Clear();
         SourceTree.Clear();
+        HealthRows.Clear();
+        _health = null;
+        ContentHealthSummary = "No content health analysis yet. Run discovery on a root page.";
         SourceTreeDetails = "Select a node to inspect its context and extracted key-text preview.";
         SelectedFinding = null;
         ScanCoverage = "Scan configuration changed. Run discovery to obtain results for this scope.";
@@ -157,6 +163,11 @@ public partial class ConfluenceViewModel
                     $"Source hierarchy enumerated: {results.SourceHierarchyComplete}; source content complete: {results.SourceContentComplete}; external inventory exhausted: {results.ExternalComplete}. " +
                     "Invisible/restricted pages cannot be counted. Enumeration is not a point-in-time site snapshot. No matches does not prove absence of redundant information.";
                 ScanWarnings = string.Join("\n", results.Warnings);
+                _health = ContentHealthAnalyzer.Analyse(results);
+                foreach (var row in _health.Rows)
+                    HealthRows.Add(row);
+                ContentHealthSummary = _health.Summary;
+                ExportReportCommand.NotifyCanExecuteChanged();
             }
         }, "Starting root-tree and cross-space duplicate discovery...", 60);
     }

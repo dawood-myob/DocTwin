@@ -96,6 +96,15 @@ user-configured prototype does not establish approval for distribution.
    step. Same-title pages with different content are still listed (capped at 500
    per scan). Every column in the findings grid can be sorted by clicking its
    header; the arrow shows direction.
+   **Content health:** the *Content health* tab (and the exported report) lists
+   every page read from the source tree with automated suggestions: *Empty*
+   (no readable text; a page with children is flagged as a possible index page),
+   *Thin* (under 50 words), *Stale* (not updated for 18+ months) and *Duplicate
+   group* (pages linked by exact or near-duplicate findings, with an estimate of
+   redundant words if one page per group were kept). The rules are simple and
+   transparent; they are prompts for an owner to review, not quality verdicts.
+   AI-written quality advice across the whole tree is not part of this build;
+   optional AI remains pairwise and consent-based.
 7. **Prepare AI** loads a finding and opens the AI tab without sending anything.
    Alternatively fetch two live pages first. The AI tab identifies the loaded
    pair and explains missing prerequisites. Choose a provider/model and approve

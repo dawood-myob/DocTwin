@@ -51,7 +51,33 @@
             <Button Content="Review selected finding" Command="{Binding ReviewFindingCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0" />
             <Button Content="Prepare AI" Command="{Binding PrepareAiPairCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" /><Button Content="Export review report" Command="{Binding ExportReportCommand}" Style="{StaticResource SecondaryButtonStyle}" />
         </WrapPanel>
-<TabControl Grid.Row="2" MinHeight="210">
+<TabControl Grid.Row="2" MinHeight="210" SelectedIndex="1">
+            <TabItem Header="Content health">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="{Binding ContentHealthSummary}" TextWrapping="Wrap" Margin="8" Foreground="{DynamicResource InkBrush}" AutomationProperties.Name="Content health summary" />
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding HealthRows}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserSortColumns="True" SelectionMode="Single" AutomationProperties.Name="Page content health">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Page" SortMemberPath="Title" Width="240">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock TextWrapping="Wrap"><Hyperlink NavigateUri="{Binding Url}" RequestNavigate="PageLink_RequestNavigate" Foreground="{DynamicResource TealHoverBrush}"><Run Text="{Binding Title, Mode=OneWay}" /></Hyperlink></TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" SortMemberPath="Severity" Width="170" />
+                            <DataGridTextColumn Header="Words" Binding="{Binding Words}" SortMemberPath="Words" Width="75" />
+                            <DataGridTextColumn Header="Last updated" Binding="{Binding Updated}" SortMemberPath="Updated" Width="150" />
+                            <DataGridTextColumn Header="Duplicate group" Binding="{Binding DuplicateGroup}" SortMemberPath="DuplicateGroup" Width="140" />
+                            <DataGridTextColumn Header="Advice (suggestion)" Binding="{Binding Advice}" SortMemberPath="Advice" Width="520" />
+                            <DataGridTextColumn Header="Source path" Binding="{Binding Path}" SortMemberPath="Path" Width="240" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
             <TabItem Header="Candidate pairs">
                 <DataGrid ItemsSource="{Binding Findings}" SelectedItem="{Binding SelectedFinding, Mode=TwoWay}" SelectionMode="Single" SelectionUnit="FullRow" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserSortColumns="True" EnableRowVirtualization="True" AutomationProperties.Name="Discovered duplicate candidates">
                     <DataGrid.Columns>

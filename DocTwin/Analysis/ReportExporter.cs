@@ -6,11 +6,13 @@ namespace DocTwin.Analysis;
 
 public static class ReportExporter
 {
-    public static string Csv(IReadOnlyList<DuplicateFinding> findings, string coverage, string warnings, IReadOnlyList<ReviewRecord> reviews)
+    public static string Csv(IReadOnlyList<DuplicateFinding> findings, string coverage, string warnings, IReadOnlyList<ReviewRecord> reviews, ContentHealthReport? health = null)
     {
         var output = new StringBuilder();
         output.AppendLine(Row("DocTwin read-only review report", DateTimeOffset.UtcNow.ToString("O")));
         output.AppendLine(Row("Coverage", coverage));
+        if (health != null)
+            output.AppendLine(Row("Content health summary", health.Summary));
         output.AppendLine(Row("Warnings", warnings));
         output.AppendLine(Row("Notice", "Lexical scores do not establish factual completeness or authority. Candidate-only text is not necessarily a missing update. No Confluence content was changed."));
         output.AppendLine(Row("Source", "Source URL", "Source version", "Source path", "Candidate", "Candidate URL", "Candidate version", "Candidate space ID", "Relationship", "Match basis", "Smaller-title coverage %", "Lexical similarity %", "Smaller-page coverage %", "Source covered %", "Candidate-only %", "Titles match", "Content verdict", "Content match %", "Word similarity %", "Differing numbers/IDs", "Suggestion", "Suggestion reason", "Evidence", "Review decision", "Review notes", "Reviewed versions current"));
@@ -22,14 +24,30 @@ public static class ReportExporter
                 finding.Relationship, finding.MatchBasis, finding.TitleCoverage.ToString(CultureInfo.InvariantCulture), finding.LexicalScore.ToString(CultureInfo.InvariantCulture), finding.SmallerPageCoverage.ToString(CultureInfo.InvariantCulture), finding.SourceCoverage.ToString(CultureInfo.InvariantCulture), finding.CandidateOnlyContentPercent.ToString(CultureInfo.InvariantCulture), finding.TitleMatchText, finding.ContentVerdict, finding.ContentMatchPercent?.ToString(CultureInfo.InvariantCulture) ?? "", finding.WordSimilarityPercent?.ToString(CultureInfo.InvariantCulture) ?? "", finding.DifferingFacts, finding.Recommendation, finding.RecommendationReason, finding.Evidence,
                 review?.Decision.ToString() ?? "NotReviewed", review?.Notes ?? "", IsCurrent(finding, review) ? "Yes" : "No / not reviewed"));
         }
+        if (health != null)
+        {
+            output.AppendLine();
+            output.AppendLine(Row("Content health (suggestions for human review)"));
+            output.AppendLine(Row("Page", "URL", "Source path", "Status", "Words", "Last updated", "Duplicate group", "Advice"));
+            foreach (var row in health.Rows)
+                output.AppendLine(Row(row.Title, row.Url.AbsoluteUri, row.Path, row.Status, row.Words.ToString(CultureInfo.InvariantCulture), row.Updated, row.DuplicateGroup, row.Advice));
+        }
         return output.ToString();
     }
 
-    public static string Html(IReadOnlyList<DuplicateFinding> findings, string coverage, string warnings, IReadOnlyList<ReviewRecord> reviews)
+    public static string Html(IReadOnlyList<DuplicateFinding> findings, string coverage, string warnings, IReadOnlyList<ReviewRecord> reviews, ContentHealthReport? health = null)
     {
         static string E(string value) => WebUtility.HtmlEncode(value);
         var output = new StringBuilder("<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>DocTwin review report</title><style>body{font:15px Segoe UI,sans-serif;background:#f8fafc;color:#0f172a;margin:32px}h1{color:#047857}table{border-collapse:collapse;width:100%}td,th{border:1px solid #cbd5e1;padding:12px;text-align:left;vertical-align:top}th{background:#e2e8f0;border-bottom:3px solid #059669}tr:nth-child(even){background:white}a{color:#047857}pre{white-space:pre-wrap}footer{margin-top:24px;color:#64748b}</style><h1>DocTwin | Evidence-first review</h1>");
-        output.Append("<p>Generated ").Append(E(DateTimeOffset.UtcNow.ToString("u"))).Append("</p><p>").Append(E(coverage)).Append("</p><pre>").Append(E(warnings)).Append("</pre><p>Potential functional overlap is a title/identifier and content-word review signal, not proven duplication or semantic equivalence. Lexical and title scores do not establish authority or factual completeness. Candidate-only text is not necessarily a missing update. No Confluence content was changed.</p><table><thead><tr><th>Source / context</th><th>Candidate</th><th>Relationship / scores</th><th>Evidence</th><th>Human review</th></tr></thead><tbody>");
+        output.Append("<p>Generated ").Append(E(DateTimeOffset.UtcNow.ToString("u"))).Append("</p><p>").Append(E(coverage)).Append("</p>");
+        if (health != null)
+        {
+            output.Append("<h2>Content health</h2><p>").Append(E(health.Summary).Replace("\n", "<br>")).Append("</p><table><thead><tr><th>Page</th><th>Status</th><th>Words</th><th>Last updated</th><th>Duplicate group</th><th>Advice (suggestion)</th></tr></thead><tbody>");
+            foreach (var row in health.Rows)
+                output.Append("<tr><td><a href=\"").Append(E(row.Url.AbsoluteUri)).Append("\">").Append(E(row.Title)).Append("</a><p>").Append(E(row.Path)).Append("</p></td><td>").Append(E(row.Status)).Append("</td><td>").Append(row.Words).Append("</td><td>").Append(E(row.Updated)).Append("</td><td>").Append(E(row.DuplicateGroup)).Append("</td><td>").Append(E(row.Advice)).Append("</td></tr>");
+            output.Append("</tbody></table><h2>Duplicate candidates</h2>");
+        }
+        output.Append("<pre>").Append(E(warnings)).Append("</pre><p>Potential functional overlap is a title/identifier and content-word review signal, not proven duplication or semantic equivalence. Lexical and title scores do not establish authority or factual completeness. Candidate-only text is not necessarily a missing update. No Confluence content was changed.</p><table><thead><tr><th>Source / context</th><th>Candidate</th><th>Relationship / scores</th><th>Evidence</th><th>Human review</th></tr></thead><tbody>");
         foreach (var finding in findings)
         {
             var review = FindReview(finding, reviews);
